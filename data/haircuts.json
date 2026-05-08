@@ -1,0 +1,79 @@
+[
+  {
+    "id": "fade_classic",
+    "name_ar": "فيد كلاسيك",
+    "name_en": "Classic Fade",
+    "image_url": "",
+    "tags": ["oval", "round", "square", "diamond"],
+    "price_egp": 80,
+    "description_ar": "قصة الفيد الكلاسيكية الأنيقة والمرتبة",
+    "active": true,
+    "sort_order": 1
+  },
+  {
+    "id": "fade_drop",
+    "name_ar": "فيد دروب",
+    "name_en": "Drop Fade",
+    "image_url": "",
+    "tags": ["oval", "diamond", "heart"],
+    "price_egp": 90,
+    "description_ar": "فيد عصري بإنحدار ناعم خلف الأذن",
+    "active": true,
+    "sort_order": 2
+  },
+  {
+    "id": "pompadour",
+    "name_ar": "بومبادور",
+    "name_en": "Pompadour",
+    "image_url": "",
+    "tags": ["oval", "round", "heart", "diamond"],
+    "price_egp": 100,
+    "description_ar": "قصة كلاسيكية عصرية بشعر مرفوع للأعلى",
+    "active": true,
+    "sort_order": 3
+  },
+  {
+    "id": "buzz_cut",
+    "name_ar": "بز كت",
+    "name_en": "Buzz Cut",
+    "image_url": "",
+    "tags": ["square", "oval", "oblong"],
+    "price_egp": 60,
+    "description_ar": "قصة قصيرة جداً عملية ومريحة",
+    "active": true,
+    "sort_order": 4
+  },
+  {
+    "id": "quiff",
+    "name_ar": "كويف",
+    "name_en": "Quiff",
+    "image_url": "",
+    "tags": ["oval", "round", "heart"],
+    "price_egp": 85,
+    "description_ar": "قصة مودرن بشعر مموج للأعلى والأمام",
+    "active": true,
+    "sort_order": 5
+  },
+  {
+    "id": "crew_cut",
+    "name_ar": "قصة كرو",
+    "name_en": "Crew Cut",
+    "image_url": "",
+    "tags": ["square", "oblong", "diamond"],
+    "price_egp": 70,
+    "description_ar": "قصة أنيقة قصيرة ومتدرجة من الأمام",
+    "active": true,
+    "sort_order": 6
+  },
+  {
+    "id": "french_crop",
+    "name_ar": "فرينش كروب",
+    "name_en": "French Crop",
+    "image_url": "",
+    "tags": ["square", "oval", "oblong"],
+    "price_egp": 75,
+    "description_ar": "قصة أوروبية بشعر قصير وفرق أمامي",
+    "active": true,
+    "sort_order": 7
+  }
+]

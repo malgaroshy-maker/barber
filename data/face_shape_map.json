@@ -1,0 +1,32 @@
+{
+  "oval": {
+    "name_ar": "بيضاوي",
+    "description_ar": "وشك متناسق — معظم القصات هتليق عليك",
+    "recommended": ["fade_classic", "fade_drop", "pompadour", "buzz_cut", "quiff", "crew_cut", "french_crop"]
+  },
+  "round": {
+    "name_ar": "مستدير",
+    "description_ar": "وشك مستدير — القصات اللي بتضيف طول هتظبط معاك",
+    "recommended": ["pompadour", "quiff", "fade_classic"]
+  },
+  "square": {
+    "name_ar": "مربع",
+    "description_ar": "وشك قوي ومعلم — القصات القصيرة والمرتبة هتليق عليك",
+    "recommended": ["buzz_cut", "crew_cut", "french_crop", "fade_classic"]
+  },
+  "heart": {
+    "name_ar": "قلب",
+    "description_ar": "وشك عريض من فوق ومدبب من تحت — القصات المتوسطة هتوازن ملامحك",
+    "recommended": ["quiff", "pompadour", "fade_drop"]
+  },
+  "oblong": {
+    "name_ar": "مستطيل",
+    "description_ar": "وشك طويل — القصات القصيرة اللي متزودش طول هتناسبك",
+    "recommended": ["buzz_cut", "crew_cut", "french_crop"]
+  },
+  "diamond": {
+    "name_ar": "ماسي",
+    "description_ar": "وشك مميز — القصات اللي بتضيف حجم من الجوانب هتظبط",
+    "recommended": ["fade_classic", "fade_drop", "pompadour", "crew_cut"]
+  }
+}
