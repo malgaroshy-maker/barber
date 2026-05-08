@@ -1,9 +1,4 @@
 import logging
-import os
-import tempfile
-from typing import Optional
-
-import httpx
 
 from app.config import MAX_SELFIE_RETRIES
 from app.models import ConversationState, UserSession
@@ -173,18 +168,9 @@ async def handle_image(phone: str, payload: dict, session: UserSession) -> None:
     result_bytes = await run_hair_swap(image_data, haircut_id)
 
     if result_bytes:
-        async with httpx.AsyncClient() as cl:
-            up_resp = await cl.post(
-                "https://tmpfiles.org/api/v1/upload",
-                files={"file": ("result.jpg", result_bytes, "image/jpeg")},
-                timeout=15,
-            )
-            if up_resp.status_code == 200:
-                data = up_resp.json()
-                result_url = data.get("data", {}).get("url")
-        if result_url:
-            session.result_image_url = result_url
-            await wa.send_image(phone, result_url, caption=s.AI_RESULT)
+        upload_result = await wa.upload_media_and_send_image(phone, result_bytes, caption=s.AI_RESULT)
+        if upload_result:
+            session.result_image_url = "uploaded_via_api"
 
     if not result_bytes and ref_url:
         session.result_image_url = ref_url

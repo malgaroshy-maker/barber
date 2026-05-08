@@ -30,6 +30,34 @@ async def send_image(to: str, image_url: str, caption: str = "") -> dict:
     return await _send(payload)
 
 
+async def upload_media_and_send_image(to: str, image_bytes: bytes, caption: str = "") -> dict:
+    from app.config import WHATSAPP_PHONE_NUMBER_ID
+
+    async with httpx.AsyncClient() as client:
+        upload_resp = await client.post(
+            f"https://graph.facebook.com/v23.0/{WHATSAPP_PHONE_NUMBER_ID}/media",
+            headers={"Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}"},
+            files={"file": ("image.jpg", image_bytes, "image/jpeg")},
+            data={"messaging_product": "whatsapp", "type": "image/jpeg"},
+        )
+        if upload_resp.status_code != 200:
+            logger.error("Media upload error: %s", upload_resp.text)
+            return {}
+
+        media_id = upload_resp.json().get("id")
+        if not media_id:
+            return {}
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": to,
+            "type": "image",
+            "image": {"id": media_id, "caption": caption},
+        }
+        return await _send(payload)
+
+
 async def send_interactive_list(to: str, header: str, body: str, button_text: str, sections: list[dict]) -> dict:
     payload = {
         "messaging_product": "whatsapp",

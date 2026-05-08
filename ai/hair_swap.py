@@ -1,12 +1,12 @@
+import asyncio
 import logging
 import urllib.parse
 from typing import Optional
 
 import httpx
 import replicate
-from google import genai
 
-from app.config import GEMINI_API_KEY, REPLICATE_API_TOKEN, HUGGINGFACE_API_TOKEN
+from app.config import FREETHEAI_API_KEY, HUGGINGFACE_API_TOKEN, REPLICATE_API_TOKEN
 
 logger = logging.getLogger(__name__)
 
@@ -22,15 +22,58 @@ HAIRCUT_PROMPTS = {
     "french_crop": "French crop with short fringe forward, textured top, faded back and sides",
 }
 
-GEMINI_IMAGE_MODELS = [
-    "gemini-2.5-flash-image",
-    "gemini-3.1-flash-image-preview",
-]
+FREETHEAI_API_URL = "https://api.freetheai.xyz/v1/images/generations"
 
 
 def _image_to_data_uri(img_bytes: bytes, fmt: str = "jpeg") -> str:
     import base64
     return f"data:image/{fmt};base64,{base64.b64encode(img_bytes).decode()}"
+
+
+async def generate_image_freetheai(haircut_id: str) -> Optional[bytes]:
+    if not FREETHEAI_API_KEY or FREETHEAI_API_KEY == "your_freetheai_api_key":
+        logger.warning("FreeTheAI API key not configured")
+        return None
+
+    prompt = HAIRCUT_PROMPTS.get(haircut_id, f"{haircut_id} hairstyle, barber haircut")
+    full_prompt = f"Professional portrait photo of a man with {prompt}, realistic, high quality, studio lighting, detailed facial features, photorealistic"
+
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                FREETHEAI_API_URL,
+                headers={
+                    "Authorization": f"Bearer {FREETHEAI_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "vhr/flux_dev",
+                    "prompt": full_prompt,
+                    "n": 1,
+                },
+            )
+            if resp.status_code != 200:
+                logger.warning("FreeTheAI returned %s: %s", resp.status_code, resp.text[:200])
+                return None
+
+            data = resp.json()
+            image_url = data.get("data", [{}])[0].get("url")
+            if not image_url:
+                b64_json = data.get("data", [{}])[0].get("b64_json")
+                if b64_json:
+                    import base64
+                    return base64.b64decode(b64_json)
+                return None
+
+            img_resp = await client.get(image_url)
+            if img_resp.status_code == 200 and len(img_resp.content) > 1000:
+                logger.info("FreeTheAI generated image (%d bytes)", len(img_resp.content))
+                return img_resp.content
+
+        return None
+    except Exception as exc:
+        logger.warning("FreeTheAI failed: %s", exc)
+        return None
 
 
 async def swap_hair_replicate(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]:
@@ -67,43 +110,22 @@ async def generate_image_pollinations(haircut_id: str) -> Optional[bytes]:
 
     url = (
         f"https://image.pollinations.ai/prompt/{urllib.parse.quote(full_prompt)}"
-        f"?model=flux&width=1024&height=1024&seed={abs(hash(haircut_id)) % 100000}"
+        f"?model=flux&width=1024&height=1024"
     )
 
-    try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.get(url, follow_redirects=True)
-            if resp.status_code == 200 and len(resp.content) > 1000:
-                logger.info("Pollinations AI generated image (%d bytes)", len(resp.content))
-                return resp.content
-            logger.warning("Pollinations AI returned %s (%d bytes)", resp.status_code, len(resp.content))
-            return None
-    except Exception as exc:
-        logger.warning("Pollinations AI failed: %s", exc)
-        return None
-
-
-async def generate_image_gemini(haircut_id: str) -> Optional[bytes]:
-    if not GEMINI_API_KEY:
-        return None
-
-    prompt = HAIRCUT_PROMPTS.get(haircut_id, f"{haircut_id} hairstyle, barber haircut")
-    full_prompt = f"Professional portrait photo of a man with {prompt}, realistic, high quality, studio lighting, detailed facial features"
-
-    for model_name in GEMINI_IMAGE_MODELS:
+    for attempt in range(3):
         try:
-            client = genai.Client(api_key=GEMINI_API_KEY)
-            response = client.models.generate_content(
-                model=model_name,
-                contents=full_prompt,
-                config={"response_modalities": ["IMAGE"]},
-            )
-            for part in response.candidates[0].content.parts:
-                if part.inline_data and part.inline_data.mime_type.startswith("image/"):
-                    logger.info("Gemini %s generated image", model_name)
-                    return part.inline_data.data
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(url, follow_redirects=True)
+                if resp.status_code == 200 and len(resp.content) > 1000:
+                    logger.info("Pollinations AI generated image (%d bytes)", len(resp.content))
+                    return resp.content
+                logger.warning("Pollinations AI attempt %d: %s (%d bytes)", attempt + 1, resp.status_code, len(resp.content))
         except Exception as exc:
-            logger.warning("Gemini %s failed: %s", model_name, exc)
+            logger.warning("Pollinations AI attempt %d failed: %s", attempt + 1, exc)
+
+        if attempt < 2:
+            await asyncio.sleep(2)
 
     return None
 
@@ -114,7 +136,7 @@ async def swap_hair_huggingface(haircut_id: str) -> Optional[bytes]:
 
     prompt = HAIRCUT_PROMPTS.get(haircut_id, f"{haircut_id} hairstyle")
     full_prompt = f"portrait photo of a man with {prompt}, realistic, high quality"
-    models_to_try = ["stabilityai/stable-diffusion-2-1", "runwayml/stable-diffusion-v1-5"]
+    models_to_try = ["black-forest-labs/FLUX.1-dev", "stabilityai/stable-diffusion-3.5-medium"]
 
     for model in models_to_try:
         try:
@@ -125,6 +147,7 @@ async def swap_hair_huggingface(haircut_id: str) -> Optional[bytes]:
                     json={"inputs": full_prompt},
                 )
                 if resp.status_code == 200 and resp.content:
+                    logger.info("HuggingFace %s generated image (%d bytes)", model, len(resp.content))
                     return resp.content
         except Exception:
             pass
@@ -137,15 +160,15 @@ async def run_hair_swap(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]
     if result:
         return result
 
-    logger.info("Trying Pollinations AI (free, no auth needed)")
+    logger.info("Trying FreeTheAI (free, no credit card)")
+    result = await generate_image_freetheai(haircut_id)
+    if result:
+        return result
+
+    logger.info("FreeTheAI failed, trying Pollinations AI")
     result = await generate_image_pollinations(haircut_id)
     if result:
         return result
 
-    logger.info("Pollinations failed, trying Gemini image generation")
-    result = await generate_image_gemini(haircut_id)
-    if result:
-        return result
-
-    logger.info("Gemini failed, trying HuggingFace")
+    logger.info("Pollinations failed, trying HuggingFace")
     return await swap_hair_huggingface(haircut_id)
