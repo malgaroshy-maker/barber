@@ -66,12 +66,12 @@ async def swap_hair_huggingface(selfie_bytes: bytes, haircut_id: str) -> Optiona
         return None
 
     try:
-        selfie_b64 = base64.b64encode(selfie_bytes).decode()
+        prompt = HAIRCUT_PROMPTS.get(haircut_id, f"{haircut_id} hairstyle")
         async with httpx.AsyncClient() as client:
             resp = await client.post(
-                "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
+                "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1",
                 headers={"Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"},
-                json={"inputs": selfie_b64},
+                json={"inputs": f"portrait photo of a man with {prompt}, realistic, high quality"},
                 timeout=60,
             )
             if resp.status_code == 200:

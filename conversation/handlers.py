@@ -166,25 +166,27 @@ async def handle_image(phone: str, payload: dict, session: UserSession) -> None:
     ref_url = (haircut or {}).get("image_url", "")
 
     from ai.hair_swap import run_hair_swap
-    result_bytes = await run_hair_swap(image_data, haircut_id, ref_url)
+    result_bytes = await run_hair_swap(image_data, haircut_id)
 
     if result_bytes:
-        result_url = None
         async with httpx.AsyncClient() as cl:
-            upload_resp = await cl.post(
+            up_resp = await cl.post(
                 "https://tmpfiles.org/api/v1/upload",
                 files={"file": ("result.jpg", result_bytes, "image/jpeg")},
                 timeout=15,
             )
-            if upload_resp.status_code == 200:
-                data = upload_resp.json()
+            if up_resp.status_code == 200:
+                data = up_resp.json()
                 result_url = data.get("data", {}).get("url")
         if result_url:
             session.result_image_url = result_url
             await wa.send_image(phone, result_url, caption=s.AI_RESULT)
-        else:
-            await wa.send_text(phone, s.DIRECT_RESULT)
-    else:
+
+    if not result_bytes and ref_url:
+        session.result_image_url = ref_url
+        await wa.send_image(phone, ref_url, caption=s.AI_RESULT)
+
+    if not result_bytes and not ref_url:
         await wa.send_text(phone, s.DIRECT_RESULT)
 
     session.state = ConversationState.AWAITING_DECISION
