@@ -1,4 +1,5 @@
 import logging
+import urllib.parse
 from typing import Optional
 
 import httpx
@@ -60,6 +61,28 @@ async def swap_hair_replicate(selfie_bytes: bytes, haircut_id: str) -> Optional[
         return None
 
 
+async def generate_image_pollinations(haircut_id: str) -> Optional[bytes]:
+    prompt = HAIRCUT_PROMPTS.get(haircut_id, f"{haircut_id} hairstyle, barber haircut")
+    full_prompt = f"Professional portrait photo of a man with {prompt}, realistic, high quality, studio lighting, detailed facial features, photorealistic"
+
+    url = (
+        f"https://image.pollinations.ai/prompt/{urllib.parse.quote(full_prompt)}"
+        f"?model=flux&width=1024&height=1024&seed={abs(hash(haircut_id)) % 100000}"
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(url, follow_redirects=True)
+            if resp.status_code == 200 and len(resp.content) > 1000:
+                logger.info("Pollinations AI generated image (%d bytes)", len(resp.content))
+                return resp.content
+            logger.warning("Pollinations AI returned %s (%d bytes)", resp.status_code, len(resp.content))
+            return None
+    except Exception as exc:
+        logger.warning("Pollinations AI failed: %s", exc)
+        return None
+
+
 async def generate_image_gemini(haircut_id: str) -> Optional[bytes]:
     if not GEMINI_API_KEY:
         return None
@@ -77,7 +100,7 @@ async def generate_image_gemini(haircut_id: str) -> Optional[bytes]:
             )
             for part in response.candidates[0].content.parts:
                 if part.inline_data and part.inline_data.mime_type.startswith("image/"):
-                    logger.info("Gemini %s generated image successfully", model_name)
+                    logger.info("Gemini %s generated image", model_name)
                     return part.inline_data.data
         except Exception as exc:
             logger.warning("Gemini %s failed: %s", model_name, exc)
@@ -113,9 +136,16 @@ async def run_hair_swap(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]
     result = await swap_hair_replicate(selfie_bytes, haircut_id)
     if result:
         return result
-    logger.info("Replicate failed, trying Gemini image generation")
+
+    logger.info("Trying Pollinations AI (free, no auth needed)")
+    result = await generate_image_pollinations(haircut_id)
+    if result:
+        return result
+
+    logger.info("Pollinations failed, trying Gemini image generation")
     result = await generate_image_gemini(haircut_id)
     if result:
         return result
+
     logger.info("Gemini failed, trying HuggingFace")
     return await swap_hair_huggingface(haircut_id)
