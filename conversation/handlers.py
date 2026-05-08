@@ -166,7 +166,7 @@ async def handle_image(phone: str, payload: dict, session: UserSession) -> None:
     ref_url = (haircut or {}).get("image_url", "")
 
     from ai.hair_swap import run_hair_swap
-    result_bytes = await run_hair_swap(image_data, ref_url) if ref_url else None
+    result_bytes = await run_hair_swap(image_data, haircut_id, ref_url)
 
     if result_bytes:
         result_url = None
