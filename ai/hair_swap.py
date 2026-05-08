@@ -23,7 +23,7 @@ HAIRCUT_PROMPTS = {
 }
 
 FREETHEAI_API_URL = "https://api.freetheai.xyz/v1/images"
-FREETHEAI_API_KEY_PLACEHOLDER = "your_freetheai_api_key"
+FREETHEAI_EDIT_RETRIES = 3
 
 
 def _image_to_data_uri(img_bytes: bytes, fmt: str = "jpeg") -> str:
@@ -32,49 +32,57 @@ def _image_to_data_uri(img_bytes: bytes, fmt: str = "jpeg") -> str:
 
 
 async def swap_hair_freetheai(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]:
-    if not FREETHEAI_API_KEY or FREETHEAI_API_KEY == FREETHEAI_API_KEY_PLACEHOLDER:
+    if not FREETHEAI_API_KEY:
         logger.warning("FreeTheAI API key not configured")
         return None
 
     prompt = HAIRCUT_PROMPTS.get(haircut_id, f"{haircut_id} hairstyle, barber haircut")
     full_prompt = f"Change the hairstyle of this person to: {prompt}. Keep the face, expression, and clothing exactly the same. Realistic portrait."
 
-    try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                f"{FREETHEAI_API_URL}/edits",
-                headers={
-                    "Authorization": f"Bearer {FREETHEAI_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "img/gpt-image-2",
-                    "prompt": full_prompt,
-                    "image": _image_to_data_uri(selfie_bytes),
-                },
-            )
-            if resp.status_code != 200:
-                logger.warning("FreeTheAI returned %s: %s", resp.status_code, resp.text[:200])
+    for attempt in range(FREETHEAI_EDIT_RETRIES):
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(
+                    f"{FREETHEAI_API_URL}/edits",
+                    headers={
+                        "Authorization": f"Bearer {FREETHEAI_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": "img/gpt-image-2",
+                        "prompt": full_prompt,
+                        "image": _image_to_data_uri(selfie_bytes),
+                    },
+                )
+                if resp.status_code == 503:
+                    logger.warning("FreeTheAI attempt %d: provider unavailable, retrying...", attempt + 1)
+                    await asyncio.sleep(3)
+                    continue
+
+                if resp.status_code != 200:
+                    logger.warning("FreeTheAI attempt %d returned %s: %s", attempt + 1, resp.status_code, resp.text[:200])
+                    return None
+
+                data = resp.json()
+                image_url = data.get("data", [{}])[0].get("url")
+                if not image_url:
+                    b64_json = data.get("data", [{}])[0].get("b64_json")
+                    if b64_json:
+                        import base64
+                        return base64.b64decode(b64_json)
+                    return None
+
+                img_resp = await client.get(image_url)
+                if img_resp.status_code == 200 and len(img_resp.content) > 1000:
+                    logger.info("FreeTheAI edited image (%d bytes)", len(img_resp.content))
+                    return img_resp.content
                 return None
+        except Exception as exc:
+            logger.warning("FreeTheAI attempt %d failed: %s", attempt + 1, exc)
+            if attempt < FREETHEAI_EDIT_RETRIES - 1:
+                await asyncio.sleep(3)
 
-            data = resp.json()
-            image_url = data.get("data", [{}])[0].get("url")
-            if not image_url:
-                b64_json = data.get("data", [{}])[0].get("b64_json")
-                if b64_json:
-                    import base64
-                    return base64.b64decode(b64_json)
-                return None
-
-            img_resp = await client.get(image_url)
-            if img_resp.status_code == 200 and len(img_resp.content) > 1000:
-                logger.info("FreeTheAI edited image (%d bytes)", len(img_resp.content))
-                return img_resp.content
-
-        return None
-    except Exception as exc:
-        logger.warning("FreeTheAI failed: %s", exc)
-        return None
+    return None
 
 
 async def swap_hair_replicate(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]:
