@@ -1,16 +1,20 @@
 import asyncio
 import logging
+import re
 import urllib.parse
 from typing import Optional
 
 import httpx
 import replicate
+from google import genai
+from google.genai import types as genai_types
 
-from app.config import FREETHEAI_API_KEY, HUGGINGFACE_API_TOKEN, REPLICATE_API_TOKEN
+from app.config import FREETHEAI_API_KEY, GEMINI_API_KEY, HUGGINGFACE_API_TOKEN, REPLICATE_API_TOKEN
 
 logger = logging.getLogger(__name__)
 
 FLUX_SCHNELL = "black-forest-labs/flux-schnell"
+FLUX_KONTEXT_PRO = "black-forest-labs/flux-kontext-pro"
 
 HAIRCUT_PROMPTS = {
     "fade_classic": "Classic fade haircut with short faded sides and slightly longer top, clean and elegant",
@@ -25,10 +29,71 @@ HAIRCUT_PROMPTS = {
 FREETHEAI_API_URL = "https://api.freetheai.xyz/v1/images"
 FREETHEAI_EDIT_RETRIES = 3
 
+GEMINI_IMAGE_MODELS = [
+    "gemini-3.1-flash-image-preview",
+    "gemini-2.5-flash-image-preview",
+]
+
 
 def _image_to_data_uri(img_bytes: bytes, fmt: str = "jpeg") -> str:
     import base64
     return f"data:image/{fmt};base64,{base64.b64encode(img_bytes).decode()}"
+
+
+def _extract_retry_delay(exc: Exception) -> int:
+    match = re.search(r"retry in (\d+(?:\.\d+)?)s", str(exc))
+    if match:
+        return max(1, int(float(match.group(1))))
+    return 10
+
+
+async def swap_hair_gemini(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]:
+    if not GEMINI_API_KEY:
+        logger.warning("Gemini API key not configured")
+        return None
+
+    prompt = HAIRCUT_PROMPTS.get(haircut_id, f"{haircut_id} hairstyle")
+    full_prompt = (
+        f"Transform this person's hairstyle to: {prompt}. "
+        f"Keep the face, facial features, skin tone, expression, clothing, "
+        f"body, posture, and background exactly the same. Only change the hair."
+    )
+
+    for model_name in GEMINI_IMAGE_MODELS:
+        for attempt in range(3):
+            try:
+                client = genai.Client(api_key=GEMINI_API_KEY)
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=[
+                        genai_types.Part.from_text(text=full_prompt),
+                        genai_types.Part.from_bytes(data=selfie_bytes, mime_type="image/jpeg"),
+                    ],
+                    config=genai_types.GenerateContentConfig(
+                        response_modalities=["TEXT", "IMAGE"],
+                    ),
+                )
+
+                for part in response.candidates[0].content.parts:
+                    if part.inline_data and part.inline_data.data:
+                        logger.info("Gemini %s generated edited image (%d bytes)", model_name, len(part.inline_data.data))
+                        return part.inline_data.data
+
+                logger.warning("Gemini %s returned no image in response", model_name)
+
+            except Exception as exc:
+                exc_str = str(exc)
+                if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str:
+                    delay = _extract_retry_delay(exc)
+                    logger.warning("Gemini %s attempt %d rate limited, retrying in %ds: %s", model_name, attempt + 1, delay, exc)
+                    await asyncio.sleep(delay)
+                    continue
+                logger.warning("Gemini %s attempt %d failed: %s", model_name, attempt + 1, exc)
+                break
+
+        logger.info("Gemini %s exhausted attempts, trying next model", model_name)
+
+    return None
 
 
 async def swap_hair_freetheai(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]:
@@ -54,9 +119,10 @@ async def swap_hair_freetheai(selfie_bytes: bytes, haircut_id: str) -> Optional[
                         "image": _image_to_data_uri(selfie_bytes),
                     },
                 )
-                if resp.status_code == 503:
-                    logger.warning("FreeTheAI attempt %d: provider unavailable, retrying...", attempt + 1)
-                    await asyncio.sleep(3)
+                if resp.status_code in (429, 503):
+                    backoff = (attempt + 1) * 3
+                    logger.warning("FreeTheAI attempt %d: %s, retrying in %ds...", attempt + 1, resp.status_code, backoff)
+                    await asyncio.sleep(backoff)
                     continue
 
                 if resp.status_code != 200:
@@ -91,14 +157,13 @@ async def swap_hair_replicate(selfie_bytes: bytes, haircut_id: str) -> Optional[
         selfie_uri = _image_to_data_uri(selfie_bytes)
 
         output = replicate.run(
-            FLUX_SCHNELL,
+            FLUX_KONTEXT_PRO,
             input={
-                "prompt": f"portrait photo of a man with {prompt}, realistic, high quality",
+                "prompt": f"Change the hairstyle to: {prompt}. Keep the face, facial features, skin tone, expression, clothing, body, and background exactly the same. Only change the hair.",
                 "image": selfie_uri,
                 "num_outputs": 1,
-                "guidance_scale": 3.5,
-                "output_quality": 85,
-                "prompt_strength": 0.7,
+                "output_format": "jpg",
+                "output_quality": 90,
             },
         )
 
@@ -169,7 +234,12 @@ async def run_hair_swap(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]
     if result:
         return result
 
-    logger.info("Trying FreeTheAI img2img (free, no credit card)")
+    logger.info("Trying Gemini img2img (free tier)")
+    result = await swap_hair_gemini(selfie_bytes, haircut_id)
+    if result:
+        return result
+
+    logger.info("Gemini failed, trying FreeTheAI img2img (free, no credit card)")
     result = await swap_hair_freetheai(selfie_bytes, haircut_id)
     if result:
         return result
