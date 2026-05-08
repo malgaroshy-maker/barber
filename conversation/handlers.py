@@ -92,6 +92,10 @@ async def handle_interactive(phone: str, interactive: dict, session: UserSession
     elif item_id.startswith("fade_") or item_id.startswith("buzz_") or item_id.startswith("pompadour") or item_id.startswith("quiff") or item_id.startswith("crew_") or item_id.startswith("french_"):
         session.selected_haircut = item_id
         session.state = ConversationState.AWAITING_SELFIE
+        haircut = get_haircut_by_id(item_id)
+        ref_url = (haircut or {}).get("image_url", "")
+        if ref_url:
+            await wa.send_image(phone, ref_url, caption=haircut.get("name_ar", ""))
         await wa.send_text(phone, s.AWAITING_SELFIE)
 
     else:
