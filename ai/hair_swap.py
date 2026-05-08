@@ -22,7 +22,8 @@ HAIRCUT_PROMPTS = {
     "french_crop": "French crop with short fringe forward, textured top, faded back and sides",
 }
 
-FREETHEAI_API_URL = "https://api.freetheai.xyz/v1/images/generations"
+FREETHEAI_API_URL = "https://api.freetheai.xyz/v1/images"
+FREETHEAI_API_KEY_PLACEHOLDER = "your_freetheai_api_key"
 
 
 def _image_to_data_uri(img_bytes: bytes, fmt: str = "jpeg") -> str:
@@ -30,26 +31,26 @@ def _image_to_data_uri(img_bytes: bytes, fmt: str = "jpeg") -> str:
     return f"data:image/{fmt};base64,{base64.b64encode(img_bytes).decode()}"
 
 
-async def generate_image_freetheai(haircut_id: str) -> Optional[bytes]:
-    if not FREETHEAI_API_KEY or FREETHEAI_API_KEY == "your_freetheai_api_key":
+async def swap_hair_freetheai(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]:
+    if not FREETHEAI_API_KEY or FREETHEAI_API_KEY == FREETHEAI_API_KEY_PLACEHOLDER:
         logger.warning("FreeTheAI API key not configured")
         return None
 
     prompt = HAIRCUT_PROMPTS.get(haircut_id, f"{haircut_id} hairstyle, barber haircut")
-    full_prompt = f"Professional portrait photo of a man with {prompt}, realistic, high quality, studio lighting, detailed facial features, photorealistic"
+    full_prompt = f"Change the hairstyle of this person to: {prompt}. Keep the face, expression, and clothing exactly the same. Realistic portrait."
 
     try:
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
-                FREETHEAI_API_URL,
+                f"{FREETHEAI_API_URL}/edits",
                 headers={
                     "Authorization": f"Bearer {FREETHEAI_API_KEY}",
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "vhr/flux_dev",
+                    "model": "img/gpt-image-2",
                     "prompt": full_prompt,
-                    "n": 1,
+                    "image": _image_to_data_uri(selfie_bytes),
                 },
             )
             if resp.status_code != 200:
@@ -67,7 +68,7 @@ async def generate_image_freetheai(haircut_id: str) -> Optional[bytes]:
 
             img_resp = await client.get(image_url)
             if img_resp.status_code == 200 and len(img_resp.content) > 1000:
-                logger.info("FreeTheAI generated image (%d bytes)", len(img_resp.content))
+                logger.info("FreeTheAI edited image (%d bytes)", len(img_resp.content))
                 return img_resp.content
 
         return None
@@ -160,8 +161,8 @@ async def run_hair_swap(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]
     if result:
         return result
 
-    logger.info("Trying FreeTheAI (free, no credit card)")
-    result = await generate_image_freetheai(haircut_id)
+    logger.info("Trying FreeTheAI img2img (free, no credit card)")
+    result = await swap_hair_freetheai(selfie_bytes, haircut_id)
     if result:
         return result
 
