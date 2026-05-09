@@ -19,6 +19,8 @@ services:
         fromEnv: REPLICATE_API_TOKEN
       - key: HUGGINGFACE_API_TOKEN
         fromEnv: HUGGINGFACE_API_TOKEN
+      - key: FREETHEAI_API_KEY
+        fromEnv: FREETHEAI_API_KEY
       - key: BUSINESS_PHONE_NUMBER
         fromEnv: BUSINESS_PHONE_NUMBER
       - key: BARBER_PHONE_NUMBER
