@@ -230,6 +230,7 @@ async def swap_hair_huggingface(haircut_id: str) -> Optional[bytes]:
 
 
 async def run_hair_swap(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]:
+    logger.info("Trying Replicate img2img (free trial: flux-kontext-pro)")
     result = await swap_hair_replicate(selfie_bytes, haircut_id)
     if result:
         return result
