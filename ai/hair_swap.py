@@ -234,12 +234,7 @@ async def run_hair_swap(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]
     if result:
         return result
 
-    logger.info("Trying Gemini img2img (free tier)")
-    result = await swap_hair_gemini(selfie_bytes, haircut_id)
-    if result:
-        return result
-
-    logger.info("Gemini failed, trying FreeTheAI img2img (free, no credit card)")
+    logger.info("Replicate failed, trying FreeTheAI img2img (free, no credit card)")
     result = await swap_hair_freetheai(selfie_bytes, haircut_id)
     if result:
         return result
