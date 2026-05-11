@@ -159,11 +159,13 @@ async def swap_hair_replicate(selfie_bytes: bytes, haircut_id: str) -> Optional[
         output = replicate.run(
             FLUX_KONTEXT_PRO,
             input={
-                "prompt": f"Change the hairstyle to: {prompt}. Keep the face, facial features, skin tone, expression, clothing, body, and background exactly the same. Only change the hair.",
+                "prompt": f"Give this exact person a {prompt}. Preserve the person's exact face identity, facial structure, skin tone, eye color, expression, age, clothing, body, posture, and background exactly as they are. The ONLY change should be the hairstyle.",
                 "image": selfie_uri,
                 "num_outputs": 1,
                 "output_format": "jpg",
                 "output_quality": 90,
+                "guidance_scale": 2.0,
+                "steps": 50,
             },
         )
 
