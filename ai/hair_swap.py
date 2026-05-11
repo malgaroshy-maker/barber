@@ -167,12 +167,28 @@ async def swap_hair_replicate(selfie_bytes: bytes, haircut_id: str) -> Optional[
             },
         )
 
-        if output and isinstance(output, list) and len(output) > 0:
+        image_url = None
+        if isinstance(output, str):
+            image_url = output
+        elif isinstance(output, list) and len(output) > 0:
+            item = output[0]
+            image_url = item if isinstance(item, str) else str(item)
+        elif hasattr(output, "url"):
+            image_url = output.url
+        elif hasattr(output, "__iter__") and not isinstance(output, (str, bytes)):
+            for item in output:
+                image_url = str(item)
+                break
+
+        if not image_url:
+            logger.warning("Replicate returned unexpected output type: %s = %s", type(output).__name__, str(output)[:200])
+            return None
+
+        if image_url:
             async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.get(str(output[0]))
+                resp = await client.get(image_url)
                 if resp.status_code == 200:
                     return resp.content
-        return None
     except Exception as exc:
         logger.warning("Replicate failed: %s", exc)
         return None
@@ -235,12 +251,7 @@ async def run_hair_swap(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]
     if result:
         return result
 
-    logger.info("Replicate failed, trying FreeTheAI img2img (free, no credit card)")
-    result = await swap_hair_freetheai(selfie_bytes, haircut_id)
-    if result:
-        return result
-
-    logger.info("FreeTheAI failed, trying Pollinations AI")
+    logger.info("Replicate failed, trying Pollinations AI (fallback)")
     result = await generate_image_pollinations(haircut_id)
     if result:
         return result
