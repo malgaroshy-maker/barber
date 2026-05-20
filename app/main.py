@@ -5,7 +5,7 @@ from fastapi import FastAPI, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.config import WHATSAPP_VERIFY_TOKEN
+from app.config import WHATSAPP_VERIFY_TOKEN, USE_OPENWA, OPENWA_WEBHOOK_SECRET
 from conversation.handlers import handle_message
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -48,6 +48,9 @@ async def receive_message(request: Request):
     body = await request.json()
     logger.info("Incoming webhook: %s", body)
 
+    if USE_OPENWA:
+        return await _handle_openwa_webhook(body)
+
     try:
         entries = body.get("entry", [])
         for entry in entries:
@@ -60,6 +63,51 @@ async def receive_message(request: Request):
                     await handle_message(phone, msg_type, message)
     except Exception:
         logger.exception("Failed to parse webhook payload")
+
+    return Response(content="OK", status_code=200)
+
+
+async def _handle_openwa_webhook(body: dict) -> Response:
+    if OPENWA_WEBHOOK_SECRET:
+        import hmac
+        import hashlib
+        signature = body.get("signature", "")
+        expected = "sha256=" + hmac.new(
+            OPENWA_WEBHOOK_SECRET.encode(),
+            str(body.get("data", "")).encode(),
+            hashlib.sha256,
+        ).hexdigest()
+        if signature and not hmac.compare_digest(signature, expected):
+            logger.warning("Invalid OpenWA webhook signature")
+            return Response(content="Invalid signature", status_code=401)
+
+    try:
+        event = body.get("event", "")
+        data = body.get("data", {})
+        session_id = body.get("sessionId", "")
+
+        if event == "message.received":
+            from_id = data.get("from", "")
+            phone = from_id.replace("@c.us", "").replace("@g.us", "")
+            msg_type = "text"
+            message_body = data.get("body", "")
+            has_media = data.get("hasMedia", False)
+
+            payload = {"text": {"body": message_body}}
+
+            if has_media:
+                msg_type = "image"
+                media_id = data.get("id", "")
+                payload = {"image": {"id": media_id}}
+
+            await handle_message(phone, msg_type, payload)
+
+        elif event == "session.status":
+            status = data.get("status", "")
+            logger.info("OpenWA session %s status: %s", session_id, status)
+
+    except Exception:
+        logger.exception("Failed to parse OpenWA webhook payload")
 
     return Response(content="OK", status_code=200)
 

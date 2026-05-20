@@ -18,6 +18,15 @@ FREETHEAI_API_KEY = os.getenv("FREETHEAI_API_KEY")
 BARBER_PHONE_NUMBER = os.getenv("BARBER_PHONE_NUMBER")
 NGROK_URL = os.getenv("NGROK_URL", "")
 
+# OpenWA Gateway (self-hosted WhatsApp API)
+OPENWA_API_URL = os.getenv("OPENWA_API_URL", "http://localhost:2785")
+OPENWA_API_KEY = os.getenv("OPENWA_API_KEY", "")
+OPENWA_SESSION_ID = os.getenv("OPENWA_SESSION_ID", "")
+OPENWA_WEBHOOK_SECRET = os.getenv("OPENWA_WEBHOOK_SECRET", "")
+
+# Use OpenWA if configured, otherwise fall back to Meta Cloud API
+USE_OPENWA = bool(OPENWA_API_URL and OPENWA_API_KEY and OPENWA_SESSION_ID)
+
 WHATSAPP_API_VERSION = "v23.0"
 WHATSAPP_API_URL = f"https://graph.facebook.com/{WHATSAPP_API_VERSION}/{WHATSAPP_PHONE_NUMBER_ID}/messages"
 

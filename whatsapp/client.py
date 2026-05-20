@@ -3,12 +3,19 @@ from typing import Optional
 
 import httpx
 
-from app.config import WHATSAPP_API_URL, WHATSAPP_ACCESS_TOKEN
+from app.config import (
+    WHATSAPP_API_URL,
+    WHATSAPP_ACCESS_TOKEN,
+    USE_OPENWA,
+)
 
 logger = logging.getLogger(__name__)
 
 
 async def send_text(to: str, text: str) -> dict:
+    if USE_OPENWA:
+        from whatsapp.openwa_client import send_text as openwa_send_text
+        return await openwa_send_text(to, text)
     payload = {
         "messaging_product": "whatsapp",
         "recipient_type": "individual",
@@ -20,6 +27,9 @@ async def send_text(to: str, text: str) -> dict:
 
 
 async def send_image(to: str, image_url: str, caption: str = "") -> dict:
+    if USE_OPENWA:
+        from whatsapp.openwa_client import send_image as openwa_send_image
+        return await openwa_send_image(to, image_url, caption)
     payload = {
         "messaging_product": "whatsapp",
         "recipient_type": "individual",
@@ -31,6 +41,9 @@ async def send_image(to: str, image_url: str, caption: str = "") -> dict:
 
 
 async def upload_media_and_send_image(to: str, image_bytes: bytes, caption: str = "") -> dict:
+    if USE_OPENWA:
+        from whatsapp.openwa_client import upload_media_and_send_image as openwa_upload
+        return await openwa_upload(to, image_bytes, caption)
     from app.config import WHATSAPP_PHONE_NUMBER_ID
 
     async with httpx.AsyncClient() as client:
@@ -59,6 +72,9 @@ async def upload_media_and_send_image(to: str, image_bytes: bytes, caption: str 
 
 
 async def send_interactive_list(to: str, header: str, body: str, button_text: str, sections: list[dict]) -> dict:
+    if USE_OPENWA:
+        from whatsapp.openwa_client import send_interactive_list as openwa_send_list
+        return await openwa_send_list(to, header, body, button_text, sections)
     payload = {
         "messaging_product": "whatsapp",
         "recipient_type": "individual",
@@ -78,6 +94,9 @@ async def send_interactive_list(to: str, header: str, body: str, button_text: st
 
 
 async def send_interactive_buttons(to: str, body: str, buttons: list[dict]) -> dict:
+    if USE_OPENWA:
+        from whatsapp.openwa_client import send_interactive_buttons as openwa_send_buttons
+        return await openwa_send_buttons(to, body, buttons)
     payload = {
         "messaging_product": "whatsapp",
         "recipient_type": "individual",
@@ -93,6 +112,9 @@ async def send_interactive_buttons(to: str, body: str, buttons: list[dict]) -> d
 
 
 async def download_media(media_id: str) -> Optional[bytes]:
+    if USE_OPENWA:
+        from whatsapp.openwa_client import download_media as openwa_download
+        return await openwa_download(media_id)
     async with httpx.AsyncClient() as client:
         url_resp = await client.get(
             f"https://graph.facebook.com/v23.0/{media_id}",

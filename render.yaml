@@ -25,3 +25,11 @@ services:
         fromEnv: BUSINESS_PHONE_NUMBER
       - key: BARBER_PHONE_NUMBER
         fromEnv: BARBER_PHONE_NUMBER
+      - key: OPENWA_API_URL
+        fromEnv: OPENWA_API_URL
+      - key: OPENWA_API_KEY
+        fromEnv: OPENWA_API_KEY
+      - key: OPENWA_SESSION_ID
+        fromEnv: OPENWA_SESSION_ID
+      - key: OPENWA_WEBHOOK_SECRET
+        fromEnv: OPENWA_WEBHOOK_SECRET
