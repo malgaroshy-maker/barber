@@ -71,10 +71,10 @@ async def upload_media_and_send_image(to: str, image_bytes: bytes, caption: str 
         return await _send(payload)
 
 
-async def send_interactive_list(to: str, header: str, body: str, button_text: str, sections: list[dict]) -> dict:
+async def send_interactive_list(to: str, header: str, body: str, button_text: str, sections: list[dict], *, page: int = 0) -> dict:
     if USE_OPENWA:
         from whatsapp.openwa_client import send_interactive_list as openwa_send_list
-        return await openwa_send_list(to, header, body, button_text, sections)
+        return await openwa_send_list(to, header, body, button_text, sections, page=page)
     payload = {
         "messaging_product": "whatsapp",
         "recipient_type": "individual",

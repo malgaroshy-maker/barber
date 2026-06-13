@@ -8,13 +8,21 @@ def build_haircut_menu_section(haircuts: list[dict], ai_option: bool = True) -> 
             continue
         title = f"{h['name_ar']} ({h['price_egp']} ج.م)"
         description = h.get("description_ar", "")[:72]
-        rows.append({"id": h["id"], "title": title[:24], "description": description})
+        rows.append({
+            "id": h["id"],
+            "title": title[:24],
+            "description": description,
+            "image_url": h.get("image_url", ""),
+            "name_ar": h.get("name_ar", ""),
+        })
 
     if ai_option:
         rows.append({
             "id": "ai_recommend",
             "title": "🌐 اختارلي القصة",
             "description": "سيب الطلعة دي عليا وأنا اختارلك اللي يليق عليك",
+            "image_url": "",
+            "name_ar": "",
         })
 
     return [{"title": "القصات المتاحة", "rows": rows}]

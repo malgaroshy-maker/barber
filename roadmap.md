@@ -35,16 +35,18 @@ Foundation       Core Bot          AI Pipeline       Booking &         Polish &
 | # | Task | Details | Status |
 |---|---|---|---|
 | 0.1 | Initialize Python project | `pyproject.toml`, virtual env, folder structure from `plan.md` | ✅ |
-| 0.2 | Create Meta Developer account | Register at developers.facebook.com, create app | ✅ |
-| 0.3 | Set up WhatsApp Cloud API | Add WhatsApp product to Meta app, get test phone number, generate temp token | ✅ |
+| 0.2 | Create Meta Developer account | Register at developers.facebook.com, create app (legacy fallback) | ✅ |
+| 0.3 | Set up OpenWA Gateway (PRIMARY) | Clone `rmyndharis/OpenWA`, run `setup-openwa.bat`, scan QR in dashboard | ✅ |
+| 0.3b | Set up WhatsApp Cloud API (fallback) | Add WhatsApp product to Meta app, get test phone number, generate temp token | ✅ |
 | 0.4 | Get Gemini API key | Sign up at aistudio.google.com, generate **Gemini 3 Flash Preview** free API key | ✅ |
+| 0.12 | Get Cloudflare Workers AI account | Sign up at dash.cloudflare.com, get Account ID + API Token (free tier, 10k neurons/day) | ✅ |
 | 0.5 | Get Replicate API key | Sign up at replicate.com, explore "Try for Free" models | ✅ |
-| 0.6 | Set up `.env` file | All API keys, phone numbers, webhook verify token | ✅ |
+| 0.6 | Set up `.env` file | All API keys, phone numbers, webhook secrets | ✅ |
 | 0.7 | Set up FastAPI skeleton | `main.py` with health check endpoint, CORS, error handling | ✅ |
-| 0.8 | Set up Cloudflare tunnel | For local testing with WhatsApp webhooks (ngrok IP blocked) | ✅ |
-| 0.9 | Configure webhook with Meta | Register cloudflare URL as webhook endpoint, verify challenge | ✅ |
+| 0.8 | Set up WhatsApp transport (OpenWA primary, Meta+Cloudflare fallback) | `start.bat` auto-detects mode; `start-openwa.bat` boots both servers in one command | ✅ |
+| 0.9 | Configure webhook (OpenWA dashboard → `http://localhost:8000/webhook`) | No public URL needed in OpenWA mode; secret must match `OPENWA_WEBHOOK_SECRET` | ✅ |
 | 0.10 | Create `.gitignore` | Exclude `.env`, `__pycache__`, venv, IDE files | ✅ |
-| 0.11 | Write `requirements.txt` | FastAPI, uvicorn, httpx, mediapipe, Pillow, python-dotenv, google-genai | ✅ |
+| 0.11 | Write `requirements.txt` | FastAPI, uvicorn, httpx, Pillow, python-dotenv, google-genai | ✅ |
 
 ### Deliverables
 - ✅ FastAPI server running locally
@@ -63,7 +65,7 @@ Foundation       Core Bot          AI Pipeline       Booking &         Polish &
 |---|---|---|---|
 | 1.1 | Build WhatsApp client wrapper | `whatsapp/client.py` — send text, image, interactive messages | ✅ |
 | 1.2 | Build Interactive Message builder | `whatsapp/interactive.py` — construct List & Button payloads | ✅ |
-| 1.3 | Create haircut catalog | `data/haircuts.json` — 6-8 haircuts with names (AR/EN), tags, prices | ✅ |
+| 1.3 | Create haircut catalog | `data/haircuts.json` — 34 trending real-world haircuts with names (AR/EN), tags, prices | ✅ |
 | 1.4 | Create face-shape mapping | `data/face_shape_map.json` — map each face shape to recommended haircuts | ✅ |
 | 1.5 | Implement FSM | `conversation/state_machine.py` — all states from plan.md diagram | ✅ |
 | 1.6 | Write all Arabic scripts | `conversation/scripts.py` — every bot response in Egyptian dialect | ✅ |
@@ -89,26 +91,25 @@ Foundation       Core Bot          AI Pipeline       Booking &         Polish &
 
 | # | Task | Details | Status |
 |---|---|---|---|
-| 2.1 | Implement face validator | `ai/face_validator.py` — MediaPipe face detection, single-face check | ✅ |
+| 2.1 | Implement face validator | `ai/face_validator.py` — OpenCV Haar cascade face detection, single-face check | ✅ |
 | 2.2 | Test validator with edge cases | Multiple faces, no face, blurry, side profile, sunglasses | ✅ |
-| 2.3 | Implement face shape analyzer | `ai/face_analyzer.py` — **Gemini 3 Flash Preview** Vision API call with hidden prompt | ✅ |
+| 2.3 | Implement face shape analyzer | `ai/face_analyzer.py` — Gemini Vision (`gemini-3.1-flash-image-preview`) call with hidden prompt | ✅ |
 | 2.4 | Test analyzer accuracy | Test with known face shapes, verify correct classification | ✅ |
-| 2.5 | Implement hair swap engine | `ai/hair_swap.py` — Replicate API (FLUX-based models) integration | ⬜ |
-| 2.6 | Create reference haircut images | Prepare high-quality reference images for each haircut in catalog | ⬜ |
-| 2.7 | Test hair swap quality | Run 10-15 test swaps, evaluate quality, tune parameters | ⬜ |
-| 2.8 | Build AI pipeline orchestrator | Chain: validate → analyze (optional) → swap → return result | ✅ |
+| 2.5 | Implement hair swap engine | `ai/hair_swap.py` — **Cloudflare Workers AI inpainting (primary, free)**, Replicate FLUX Kontext (quality fallback) | ✅ |
+| 2.6 | Generate hair mask | `ai/hair_mask.py` — OpenCV-based mask covering only the head (not background) | ✅ |
+| 2.7 | Test hair swap quality | Run test swaps with real face, verify face identity preservation across 5+ styles | ✅ |
+| 2.8 | Build AI pipeline orchestrator | Chain: validate → analyze (optional) → mask → swap → return result | ✅ |
 | 2.9 | Add "processing" feedback | Send "ثواني بحلل..." message while AI processes | ✅ |
 | 2.10 | Add privacy notice | Send "صورتك في أمان 🔒" before processing | ✅ |
 | 2.11 | Implement image cleanup | Ensure selfie bytes are deleted from memory after processing | ✅ |
-| 2.12 | Add HuggingFace fallback | If Replicate fails/exhausted, fall back to HF Inference API (free tier) | ⬜ |
-| 2.14 | Evaluate AILab Tools | Test AILab Tools Hairstyle Changer API (7-day free trial) as alternative | ⬜ |
-| 2.13 | Unit tests for AI modules | Mock API responses, test error handling | ⬜ |
+| 2.12 | Unit tests for AI modules | `tests/test_hair_mask.py` — mask generation, error handling | ✅ |
+| 2.13 | Tune hair mask + Cloudflare request format | Switch to JSON byte arrays, tighter mask bounds | ✅ |
 
 ### Deliverables
 - ✅ Bad selfies are rejected with friendly Arabic message
-- ✅ Face shape is detected correctly
-- ✅ Virtual try-on image is generated and sent to user
-- ✅ Processing takes < 25 seconds
+- ✅ Face shape is detected correctly (Gemini)
+- ✅ Virtual try-on image is generated (face-preserving via Cloudflare inpainting)
+- ✅ Pipeline tested with sample selfies across 5+ styles
 - ✅ Images are never persisted
 
 ---
@@ -221,9 +222,10 @@ Week 4  │ Phase 3 (1d) ──►│ Phase 4 (3d) ──►│ 🚀 Soft Launch
 |---|---|---|
 | Meta Developer account approval | Phase 0 | 🟡 Medium (can take 1-2 days) |
 | WhatsApp Business verification | Phase 0 | 🟢 Low (test mode works immediately) |
-| Haircut reference images | Phase 2 | 🟡 Medium (need quality photos from barber) |
+| Cloudflare Workers AI free tier | Phase 2 | 🟢 Low (10,000 neurons/day ≈ 100-200 inpaintings/day) |
+| Replicate fallback | Phase 2-4 | 🟡 Medium (free trial rate-limited to 6 req/min; needs top-up for scale) |
+| Haircut reference images for catalog UI | Phase 1 | 🟡 Medium (need quality photos from barber; catalogue IDs/names are ready) |
 | Barber cooperation for testing | Phase 4 | 🟡 Medium (need their number + availability) |
-| Replicate "Try for Free" models | Phase 2 | 🟢 Low (free runs available, prepaid credits ~$5-10 for extended testing) |
 
 ---
 
@@ -240,15 +242,39 @@ Week 4  │ Phase 3 (1d) ──►│ Phase 4 (3d) ──►│ 🚀 Soft Launch
 | 2026-05-07 | SQLite for bookings (not Supabase) | Zero cost, sufficient for single-salon test |
 | 2026-05-07 | Python + FastAPI (not Node.js) | Better AI/ML ecosystem, team familiarity |
 | 2026-05-07 | Cash-only payments for test phase | Simplifies MVP, matches PRD requirement |
+| 2026-06-13 | Switched hair-swap primary to **Cloudflare Workers AI inpainting** | Free tier (10k neurons/day) preserves face identity via masked inpainting. Tested with 5 styles on a real face — face, eyes, beard, clothing all preserved. |
+| 2026-06-13 | Switched face validator to **OpenCV Haar cascade** | Was MediaPipe; Haar has zero new dependencies (already in OpenCV) and runs in the same `face_validator.py` module. |
+| 2026-06-13 | Haircut catalog expanded to **34 real-world trending styles** | Sourced from current men's hairstyle references; covers fades, crops, classic, fringe, edgy, curly/afro, and longer styles. |
+| 2026-06-13 | Cloudflare REST API expects JSON with `image` and `mask` as **arrays of bytes** | Not base64, not multipart. Verified via token check + 200 OK responses. |
+| 2026-06-13 | Switched WhatsApp transport to **OpenWA Gateway** (rmyndharis/OpenWA) as primary | Eliminates the random trycloudflare.com URL + origin-cert warnings on every restart. OpenWA + FastAPI both run on localhost; webhook target is stable. Baileys engine is still "future" in v0.1.6 so we pin `whatsapp-web.js` instead. |
+| 2026-06-13 | Rewrote `setup-openwa.bat` + added `start-openwa.bat` / auto-detect in `start.bat` | Old `Get-Content`+`replace` pattern silently failed when keys were already populated. `Set-Content` (PowerShell) is now used to patch `.env` idempotently. |
+| 2026-06-13 | Upgraded face validator from Haar cascade to **OpenCV YuNet DNN** | Haar missed ~40% of real faces. YuNet ONNX model (232 KB) auto-downloads on first use and is cached in `ai/models/`. 4-cascade Haar ensemble as fallback. Also upgraded hair-mask detector identically. |
+| 2026-06-13 | OpenWA sends **`type: "image"` with inline `media.data` (base64)**, not `hasMedia` | Meta uses `hasMedia`; OpenWA uses the `IncomingMessage` interface with `type` + `media` fields. The bot now decodes the inline base64 directly instead of calling a separate download endpoint. |
+| 2026-06-13 | OpenWA users get **`@lid` chatIds** (linked IDs), not `@c.us` | `_to_chat_id` now passes through any value containing `@`. Session key uses the full chatId so state is stable. |
+| 2026-06-13 | OpenWA **body-parser limit raised from 100 KB to 15 MB** | Patched `openwa/src/main.ts` with `app.use(json({limit:'15mb'}))`. Result images (250–500 KB base64) were triggering 413 PayloadTooLarge. |
+| 2026-06-13 | Menu rendered as **paginated 3-cut numbered text** with "more"/"back" nav | OpenWA has no buttons or list endpoints. 34 cuts × 3 per page with digit replies. `menu_page` tracked on `UserSession`. |
+| 2026-06-13 | `AWAITING_DECISION` numeric replies accepted (1/2) | The decision menu (confirm / try another) now accepts plain-digit replies instead of requiring structured `interactive.button_reply`. |
+| 2026-06-13 | `BOOKING_CONFIRMED` and `PROCESSING` states accept recovery commands | "hi" / "menu" / "ابدأ" reset the session to WELCOME and show the menu. Prevents users from getting bricked. |
+| 2026-06-13 | Webhook `secret` was `null` — set via PUT API | The OpenWA dashboard did not persist the secret on webhook creation. `scripts/setup_openwa.py` now backfills the secret on existing webhooks. |
+| 2026-06-13 | `httpx.Timeout(5s connect, 15s read)` for outbound OpenWA calls | Default 30s timeout froze the entire webhook handler when OpenWA's server-side URL fetch for reference images was slow. Reference image sends are also wrapped in try/except. |
 
 ---
 
 > [!IMPORTANT]
 > **Test Phase Ground Rules:**
 > - All services must be free-tier or use signup/trial credits.
-> - Maximum 5 test phone numbers (Meta limit).
-> - Customer-initiated conversations only (free within 24h window).
+> - Maximum 5 test phone numbers (Meta limit, only relevant in legacy fallback mode).
+> - Customer-initiated conversations only (free within 24h window in legacy mode).
 > - Process AI results quickly — don't let the 24h reply window expire.
 > - Free tier AI data may be used by providers to improve their models — acceptable for test phase.
 > - Focus on proving the AI try-on concept works before investing in paid infrastructure.
 > - Collect feedback from 10-15 real test users before graduating to Phase 5.
+>
+> **Stack as of 2026-06-13:**
+> - **WhatsApp transport (PRIMARY):** OpenWA Gateway (`https://github.com/rmyndharis/OpenWA`) running locally — no tunneling, no Meta signup, one-time QR scan
+> - **WhatsApp transport (fallback):** Meta Cloud API v23.0 + Cloudflare quick-tunnel (legacy `start.bat` mode)
+> - **Face validation:** OpenCV YuNet DNN (232 KB ONNX, auto-downloaded) with 4-cascade Haar ensemble fallback
+> - **Hair mask generator:** OpenCV YuNet DNN (same model) — white mask covering the hair region for Cloudflare inpainting
+> - **Face shape analysis:** Gemini 3.1 Flash Image Preview (free, key needs renewal)
+> - **Hair swap primary:** Cloudflare Workers AI inpainting (`@cf/runwayml/stable-diffusion-v1-5-inpainting`) — free, face-preserving
+> - **Hair swap quality fallback:** Replicate FLUX Kontext Pro (~$0.04/image) — does not preserve face

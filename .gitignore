@@ -14,3 +14,15 @@ build/
 *.swo
 .DS_Store
 Thumbs.db
+
+# Test artifacts
+hair_mask_test.png
+hair_swap_*.png
+test_real_face.jpg
+*_test.png
+*_output.png
+
+# Generated reference images (downloaded/generated)
+static/*.jpg
+static/*.png
+!static/.gitkeep

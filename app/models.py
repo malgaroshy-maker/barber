@@ -23,6 +23,7 @@ class UserSession:
     result_image_url: Optional[str] = None
     created_at: datetime = field(default_factory=datetime.now)
     attempts: int = 0
+    menu_page: int = 0
 
 
 @dataclass
