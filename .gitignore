@@ -1,19 +1,38 @@
+# Environment
 .env
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
 venv/
 .venv/
 env/
+
+# IDE
 .idea/
 .vscode/
-*.egg-info/
-dist/
-build/
 *.swp
 *.swo
+
+# OS
 .DS_Store
 Thumbs.db
+
+# Node.js (OpenWA gateway)
+openwa/node_modules/
+openwa/dist/
+openwa/dashboard/node_modules/
+openwa/dashboard/dist/
+
+# Build
+dist/
+build/
 
 # Test artifacts
 hair_mask_test.png
@@ -21,8 +40,28 @@ hair_swap_*.png
 test_real_face.jpg
 *_test.png
 *_output.png
+test_*.jpg
+test_*.png
+test_*.webp
+test_mask_*.png
+test_mask_*.jpg
+icedit_hair_output.webp
 
 # Generated reference images (downloaded/generated)
 static/*.jpg
 static/*.png
 !static/.gitkeep
+
+# AI models (auto-downloaded)
+ai/models/*.onnx
+ai/models/*.bin
+
+# OpenWA session data (contains WhatsApp auth)
+openwa/data/sessions/
+
+# OpenWA API key
+openwa/data/.api-key
+
+# Logs
+*.log
+logs/

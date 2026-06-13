@@ -47,13 +47,15 @@ A WhatsApp chatbot for barbershops that:
 | Layer | Technology | Why Free? |
 |---|---|---|
 | **Runtime** | Python 3.12 + FastAPI | Open-source |
-| **WhatsApp API** | Meta WhatsApp Cloud API v23.0+ | Conversation-based pricing (24h windows). Customer-initiated conversations free within 24h window. Test numbers free for up to 5 recipients. |
-| **Hosting** | Render free tier **or** local ngrok tunnel | $0 during testing (Railway free tier deprecated) |
+| **WhatsApp API (Primary)** | **OpenWA Gateway** (`https://github.com/rmyndharis/OpenWA`) running locally (port 2785 API / 2886 dashboard) | Self-hosted, no Meta account, no URL rotates between restarts. Uses bundled `whatsapp-web.js` engine. |
+| **WhatsApp API (Fallback)** | Meta WhatsApp Cloud API v23.0+ | Conversation-based pricing. Kept as fallback for users who already have a Meta app. |
+| **Hosting** | Local development (no tunnel needed in OpenWA mode) | $0 |
 | **Face Analysis** | **Google Gemini 3 Flash Preview** (`gemini-3-flash-preview`, free tier via Google AI Studio) | Free tier: 15 RPM, 1M input tokens, 64k output tokens — sufficient for single-salon testing |
-| **Hair Swap / Try-On** | **Replicate** (FLUX Schnell: `black-forest-labs/flux-schnell`) + **HuggingFace Inference API** (fallback) | Replicate: "Try for Free" collection + prepaid credits. HF: free tier for prototyping (~200 req/hr) |
-| **Image Validation** | MediaPipe Face Detection (local, offline) | Fully free, runs on-device |
+| **Hair Swap / Try-On (Primary)** | **Cloudflare Workers AI inpainting** (`@cf/runwayml/stable-diffusion-v1-5-inpainting`) | Free tier: 10k neurons/day (~100-200 images/day). Face-preserving via local OpenCV hair mask. |
+| **Hair Swap / Try-On (Quality Fallback)** | Replicate FLUX Kontext Pro / change-haircut app | ~$0.04/image |
+| **Image Validation** | OpenCV Haar cascade (local, offline) | Fully free, runs on-device |
 | **Conversation State** | In-memory dict / SQLite | No external DB cost |
-| **Barber Notification** | WhatsApp Cloud API (same account) or Telegram Bot API (free) | $0 |
+| **Barber Notification** | OpenWA / WhatsApp Cloud API or Telegram Bot API (free) | $0 |
 | **Scheduler/Queue** | Python `asyncio` tasks | Built-in |
 
 ---
@@ -162,7 +164,16 @@ barber/
 
 ## 6. API Integration Details
 
-### 6.1 WhatsApp Cloud API (2026 Pricing Model)
+### 6.1 WhatsApp Transport (OpenWA Gateway — Primary)
+
+- **Setup:** Run `setup-openwa.bat` → `start-openwa.bat` → open dashboard at `http://localhost:2886` → scan QR code once.
+- **Webhook:** OpenWA forwards `message.received` and `session.status` events to `http://localhost:8000/webhook` (a stable, local URL — no tunneling, no random `*.trycloudflare.com` addresses, no certificate warnings).
+- **Auth:** `X-API-Key` header on every OpenWA call, HMAC-SHA256 signature on every webhook.
+- **Why OpenWA:** runs entirely on localhost, no Meta account required, no URL rotates between restarts, no cost. The bundled engine in v0.1.6 is `whatsapp-web.js` (Baileys is listed as "future" in the example env). The `start.bat` script auto-detects whether OpenWA keys are present and falls back to the Meta path otherwise.
+
+### 6.1b WhatsApp Cloud API (Legacy Fallback)
+
+Used only when `OPENWA_API_KEY` and `OPENWA_SESSION_ID` are empty.
 
 - **Setup:** Create Meta Developer account → Create App → Add WhatsApp product → Get test phone number.
 - **Webhook:** FastAPI `POST /webhook` receives all incoming messages.
@@ -195,21 +206,26 @@ No explanation, no extra text.
 
 ### 6.3 Virtual Try-On / Hair Swap
 
-**Option A — Replicate (Primary):**
-- Model: `black-forest-labs/flux-schnell` (priority, fastest free-tier FLUX model) or other FLUX-based inpainting/editing models from Replicate's model directory.
-- **Free access:** "Try for Free" collection allows limited runs without payment. After that, prepaid credits required.
-- Cost after free runs: ~$0.02–$0.10 per generation (varies by model).
-- **Search for models:** Use terms "hair swap", "inpainting", "hairstyle" on replicate.com/explore.
+**Option A — Cloudflare Workers AI (Primary, Free):**
+- Model: `@cf/runwayml/stable-diffusion-v1-5-inpainting` for hair-region editing.
+- **Free allocation:** 10,000 Neurons/day (~100–200 images/day depending on resolution).
+- A local hair mask is generated from the selfie using OpenCV, masking only the hair region so the face is preserved.
+- Cost after free tier: ~$0.011 per 1,000 Neurons (effectively a fraction of a cent per image).
 
-**Option B — HuggingFace Inference API (Fallback):**
+**Option B — Replicate SDXL Inpainting (Fallback):**
+- Model: `lucataco/sdxl-inpainting`.
+- Cost: ~$0.0024 per image.
+- Uses the same hair mask as Cloudflare; better quality if Cloudflare is insufficient.
+
+**Option C — Replicate FLUX Kontext (Quality Fallback):**
+- Model: `black-forest-labs/flux-kontext-pro` or the dedicated `flux-kontext-apps/change-haircut`.
+- Cost: ~$0.04 per image.
+- Text-guided editing; may alter pose/clothing but produces high-quality hairstyles.
+
+**Option D — HuggingFace Inference API (Fallback):**
 - Free tier: rate-limited (few hundred requests/hour), designed for prototyping.
 - Models: FLUX variants, Stable Diffusion XL inpainting, or community hair-swap models.
 - **⚠️ Note:** Expect cold starts and queuing during high-demand periods.
-- Pro subscription ($9/mo) available if free tier is too limiting.
-
-**Option C — AILab Tools API (Alternative):**
-- Dedicated hairstyle changer API with free trial (e.g., 10 API units for 7-day trial).
-- Credit-based pricing after trial. Good quality, purpose-built for this use case.
 
 ### 6.4 Face Validation (MediaPipe — Fully Offline)
 
