@@ -47,6 +47,10 @@ test_mask_*.png
 test_mask_*.jpg
 icedit_hair_output.webp
 
+# Data images (generated/downloaded)
+data/*.jpg
+data/*.png
+
 # Generated reference images (downloaded/generated)
 static/*.jpg
 static/*.png

@@ -1,6 +1,6 @@
-# AI Barber WhatsApp Bot 🤖✂️
+# AI Barber WhatsApp Bot
 
-**Smart Haircut Recommendation & Virtual Try-On via WhatsApp**
+**Arabic-first WhatsApp bot for haircut virtual try-on — bring your own hair catalogue.**
 
 ---
 
@@ -8,88 +8,60 @@
 
 ### What is it?
 
-AI Barber is a WhatsApp bot that lets customers browse a catalogue of 34 trending men's haircuts, send a selfie, and receive a photorealistic virtual try-on of their chosen haircut — all within WhatsApp. No app download required.
-
-### Features
-
-- **Visual Catalogue**: Browse 34 trending haircuts with reference images, sent as a paginated carousel (3 per page)
-- **AI Try-On**: Upload a selfie and see how the haircut looks on you using Cloudflare Workers AI inpainting
-- **Face Detection**: YuNet DNN face validator ensures only valid selfies are processed
-- **Smart Recommendations**: Optional AI face-shape analysis suggests the best haircut for your face
-- **Booking Flow**: Confirm or retry after seeing the result
-- **Bilingual**: Arabic-first UI with English fallback
-- **Free Tier**: Runs entirely on free services (Cloudflare, OpenWA)
-
-### Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| WhatsApp Transport | OpenWA Gateway (self-hosted, no Meta API) |
-| Backend | Python 3.12 + FastAPI |
-| Face Detection | OpenCV YuNet DNN + Haar cascade fallback |
-| Hair Swap | Cloudflare Workers AI (SD 1.5 inpainting) |
-| Catalogue Images | Cloudflare FLUX.2 (AI-generated) |
-| Color Matching | OpenCV Lab histogram matching |
+A WhatsApp bot that lets customers browse a haircut catalogue, send a selfie, and receive a photorealistic virtual try-on — all within WhatsApp. No app download, no Meta Cloud API.
 
 ### Quick Start
 
 ```bash
-# 1. Clone the repo
+# 1. Clone
 git clone https://github.com/malgaroshy-maker/barber.git
 cd barber
 
-# 2. Create virtual environment
+# 2. Python env
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 3. Set up OpenWA Gateway
+# 3. Install OpenWA Gateway
 setup-openwa.bat
 
-# 4. Configure environment
+# 4. Configure
 copy .env.example .env
-# Edit .env with your Cloudflare account ID and API token
+# Edit .env with your Cloudflare account ID + API token
 
-# 5. Generate reference images (one-time)
+# 5. Generate your catalogue (or add your own images to static/)
 python scripts\generate_reference_images.py
 
-# 6. Start all services
+# 6. Start
 start-openwa.bat
 ```
 
-Then open http://localhost:2886 to scan the WhatsApp QR code.
+Open http://localhost:2886 to scan the WhatsApp QR code.
+
+### Customize
+
+- **Catalogue**: Edit `data/haircuts.json` — add/remove cuts, change names, swap images
+- **Prompts**: Edit `HAIRCUT_PROMPTS` in `ai/hair_swap.py` — controls the inpainting style
+- **Hair mask**: Tweak `ai/hair_mask.py` — adjust mask region and blur for different head shapes
+- **Face validator**: `ai/face_validator.py` — change confidence thresholds or swap detector model
+- **WhatsApp transport**: `whatsapp/openwa_client.py` — customize message formatting, pagination, delays
+- **Conversation flow**: `conversation/handlers.py` — modify the state machine, add new steps
 
 ### Project Structure
 
 ```
 barber/
-├── ai/                  # AI models (face detection, hair swap, color match)
-├── app/                 # FastAPI application (webhook, config)
-├── conversation/        # State machine & message handlers
-├── data/                # Haircut catalogue (haircuts.json)
-├── scripts/             # Setup & generation scripts
-├── specs/               # Technical specifications
-├── static/              # Reference haircut images
-── tests/               # Unit tests
-├── whatsapp/            # WhatsApp client (OpenWA + Meta)
+├── ai/                  # Face detection, hair mask, swap, color match
+├── app/                 # FastAPI webhook server
+├── conversation/        # State machine + message handlers
+├── data/                # Haircut catalogue JSON
+├── scripts/             # Setup & image generation
+├── static/              # Reference images (generate or add your own)
+├── whatsapp/            # OpenWA + Meta client
 ├── .env.example         # Environment template
-├── requirements.txt     # Python dependencies
+├── requirements.txt     # Python deps
 └── start-openwa.bat     # One-command startup
 ```
-
-### How It Works
-
-1. User sends **"hi"** → Bot shows 3 haircut images with numbered captions
-2. User replies **"1"**, **"2"**, or **"3"** → Bot asks for a selfie
-3. User sends **selfie** → Face validation → AI inpainting → Result image
-4. User sees the result → Replies **"1"** to confirm booking or **"2"** to try another
-
-### Requirements
-
-- Python 3.12+
-- Node.js 18+ (for OpenWA Gateway)
-- Cloudflare account (free tier)
-- WhatsApp account (for QR scan)
 
 ---
 
@@ -97,28 +69,7 @@ barber/
 
 ### ما هو؟
 
-AI Barber هو بوت واتساب يتيح للعملاء تصفح كتالوج من 34 قصة شعر رجالية عصرية، إرسال صورة سيلفي، والحصول على تجربة افتراضية واقعية للقصة المختارة — كل ذلك داخل واتساب. بدون تحميل أي تطبيق.
-
-### المميزات
-
-- **كتالوج مرئي**: تصفح 34 قصة شعر عصرية مع صور مرجعية، تُرسل كصفحات (3 صور لكل صفحة)
-- **تجربة افتراضية بالذكاء الاصطناعي**: ارفع سيلفي وشوف القصة عليك باستخدام Cloudflare Workers AI
-- **كشف الوجوه**: YuNet DNN للتأكد من أن السيلفي صالح للمعالجة
-- **توصيات ذكية**: تحليل شكل الوجه بالذكاء الاصطناعي يقترح أفضل قصة لك
-- **تأكيد الحجز**:确认后 أو جرب قصة أخرى بعد رؤية النتيجة
-- **ثنائي اللغة**: واجهة عربية أولاً مع دعم الإنجليزي
-- **مجاني بالكامل**: يعمل على خدمات مجانية (Cloudflare, OpenWA)
-
-### التقنيات المستخدمة
-
-| المكوّن | التقنية |
-|---------|---------|
-| نقل واتساب | OpenWA Gateway (مستضاف محلياً، بدون Meta API) |
-| الخلفية | Python 3.12 + FastAPI |
-| كشف الوجوه | OpenCV YuNet DNN + Haar cascade |
-| تبديل الشعر | Cloudflare Workers AI (SD 1.5 inpainting) |
-| صور الكتالوج | Cloudflare FLUX.2 (مولّدة بالذكاء الاصطناعي) |
-| مطابقة الألوان | OpenCV Lab histogram matching |
+بوت واتساب يتيح للعملاء تصفح كتالوج قصات شعر، إرسال سيلفي، والحصول على تجربة افتراضية للقصة — كل ذلك داخل واتساب. بدون تحميل تطبيق، بدون Meta API.
 
 ### البدء السريع
 
@@ -127,7 +78,7 @@ AI Barber هو بوت واتساب يتيح للعملاء تصفح كتالوج
 git clone https://github.com/malgaroshy-maker/barber.git
 cd barber
 
-# 2. أنشئ بيئة افتراضية
+# 2. بيئة بايثون
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
@@ -135,42 +86,39 @@ pip install -r requirements.txt
 # 3. ثبّت OpenWA Gateway
 setup-openwa.bat
 
-# 4. اضبط الإعدادات
+# 4. الإعدادات
 copy .env.example .env
 # عدّل .env بمعرف حساب Cloudflare ومفتاح API
 
-# 5. ولّد صور الكتالوج (مرة واحدة)
+# 5. ولّد صور الكتالوج (أو أضف صورك الخاصة إلى static/)
 python scripts\generate_reference_images.py
 
-# 6. شغّل كل الخدمات
+# 6. شغّل
 start-openwa.bat
 ```
 
-ثم افتح http://localhost:2886 لمسح كود QR الخاص بواتساب.
+افتح http://localhost:2886 لمسح كود QR الخاص بواتساب.
 
-### كيف يعمل؟
+### التخصيص
 
-1. المستخدم يرسل **"hi"** → البوت يعرض 3 صور قصات مع أرقام
-2. المستخدم يرد **"1"** أو **"2"** أو **"3"** → البوت يطلب سيلفي
-3. المستخدم يرسل **سيلفي** → التحقق من الوجه → معالجة بالذكاء الاصطناعي → صورة النتيجة
-4. المستخدم يرى النتيجة → يرد **"1"** لتأكيد الحجز أو **"2"** لتجربة قصة أخرى
+- **الكتالوج**: عدّل `data/haircuts.json` — أضف/احذف قصات، غيّر الأسماء والصور
+- **التوليد بالذكاء الاصطناعي**: عدّل `ai/hair_swap.py` — تحكم في أسلوب معالجة الشعر
+- **قناع الشعر**: `ai/hair_mask.py` — اضبط مساحة القناع لأنواع الوجوه المختلفة
+- **بوت المحادثة**: `conversation/handlers.py` — غيّر تدفق المحادثة والخطوات
+- **النقل**: `whatsapp/openwa_client.py` — خصص تنسيق الرسائل والترقيم
 
-### المتطلبات
+### هيكل المشروع
 
-- Python 3.12+
-- Node.js 18+ (لـ OpenWA Gateway)
-- حساب Cloudflare (النسخة المجانية)
-- حساب واتساب (لمسح QR)
-
----
-
-## 👨‍💻 Developed by
-
-**Mahamed Al-Garoshy**  
-**محمد الجروشي**
-
----
-
-##  License
-
-This project is proprietary. All rights reserved.
+```
+barber/
+├── ai/                  # كشف الوجوه، قناع الشعر، المعالجة
+├── app/                 # خادم FastAPI
+├── conversation/        # حالات المحادثة ومعالجة الرسائل
+├── data/                # ملف الكتالوج JSON
+├── scripts/             # أدوات التنصيب والتوليد
+├── static/              # صور القصات المرجعية
+├── whatsapp/            # عميل واتساب
+├── .env.example         # قالب الإعدادات
+├── requirements.txt     # متطلبات بايثون
+└── start-openwa.bat     # تشغيل بنقرة واحدة
+```
