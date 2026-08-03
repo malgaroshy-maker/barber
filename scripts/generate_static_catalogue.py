@@ -14,17 +14,15 @@ logger = logging.getLogger(__name__)
 STATIC_DIR = Path("static")
 STATIC_DIR.mkdir(exist_ok=True)
 
-# Detailed photorealistic base prompt for static reference gallery photos
 PROMPT_TEMPLATE = (
-    "8k photorealistic close-up studio headshot portrait photo of a handsome man with {prompt}, "
-    "clean barbershop lighting, sharp focus, neutral studio background, 35mm portrait lens, professional barber model photography"
+    "8k photorealistic close-up studio headshot portrait photo of a handsome 28-year-old male model with {prompt}, "
+    "clean barbershop lighting, sharp focus, natural human skin texture, real eyes, neutral studio background, 35mm portrait lens, professional headshot photo"
 )
 
 async def generate_reference_image(haircut_id: str, prompt_text: str) -> bool:
     target_path = STATIC_DIR / f"{haircut_id}.jpg"
     full_prompt = PROMPT_TEMPLATE.format(prompt=prompt_text)
     
-    # We use Cloudflare Workers AI text-to-image or flux model if available
     url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/bytedance/stable-diffusion-xl-lightning"
     
     headers = {
@@ -42,8 +40,8 @@ async def generate_reference_image(haircut_id: str, prompt_text: str) -> bool:
             if resp.status_code == 200 and resp.content:
                 img = Image.open(io.BytesIO(resp.content)).convert("RGB")
                 img = img.resize((512, 512), Image.Resampling.LANCZOS)
-                img.save(target_path, "JPEG", quality=90)
-                logger.info("Successfully generated static reference: %s (%d bytes)", target_path.name, len(resp.content))
+                img.save(target_path, "JPEG", quality=95)
+                logger.info("Generated static reference: %s (%d bytes)", target_path.name, target_path.stat().st_size)
                 return True
             else:
                 logger.warning("Cloudflare gen failed for %s: %s %s", haircut_id, resp.status_code, resp.text[:150])
