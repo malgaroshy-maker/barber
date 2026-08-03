@@ -33,20 +33,20 @@ CLOUDFLARE_INPAINTING_MODEL = "@cf/runwayml/stable-diffusion-v1-5-inpainting"
 
 HAIRCUT_PROMPTS = {
     # Fades
-    "fade_classic": "Classic fade haircut, neatly tapered short faded sides with comb-over top, clean hair line",
+    "fade_classic": "Classic fade haircut, natural medium length hair neatly parted on top, clean side fade, realistic head proportions",
     "fade_drop": "Drop fade haircut, low fade curving behind ears, short textured top",
-    "fade_mid_skin": "Mid skin fade haircut, skin-short faded sides ending above ears, neat top",
+    "fade_mid_skin": "Mid skin fade haircut, neat short textured top, smooth clean skin fade on sides",
     "fade_low": "Low fade haircut, subtle taper just above ears and neckline",
     "fade_high": "High fade haircut, fade starting high on sides with short top",
     "burst_fade": "Burst fade haircut, circular fade radiating around ears, textured top",
     # Short / military
     "buzz_cut": "Buzz cut hairstyle, short textured dark hair fade on top, clean short hair trim, neat hairline, dark short hair density, stylish barber buzz cut",
     "crew_cut": "Crew cut, short tapered haircut with slightly longer hair on top front",
-    "french_crop": "French crop haircut with straight horizontal blunt fringe across forehead, textured forward bangs, skin fade sides",
+    "french_crop": "French crop haircut, natural short forward textured hair fringe across upper forehead, natural head volume, clean tapered sides",
     "caesar_cut": "Modern Caesar haircut, short straight horizontal fringe, short textured top",
     "ivy_league": "Ivy league haircut, short side-parted comb-over with clean tapered sides",
     # Volume / classic
-    "pompadour": "Pompadour hairstyle, high volume hair swept up and backward, short tapered sides",
+    "pompadour": "Classic pompadour haircut, moderate swept-back front hair volume, clean tapered sides, natural hairline",
     "quiff": "Quiff hairstyle, medium length hair brushed up and forward at the front, faded sides",
     "textured_quiff": "Textured quiff hairstyle, messy voluminous hair on top, short faded sides",
     "brush_up": "Brush up hairstyle, hair styled straight upward with texture, tapered sides",
@@ -69,9 +69,9 @@ HAIRCUT_PROMPTS = {
     "afro": "Full rounded afro hairstyle, dense natural kinky hair volume around head",
     "high_top": "High top fade haircut, flat top box haircut with high skin fade on sides",
     # Long
-    "man_bun": "Man bun hairstyle, long hair pulled back into a neat top-knot bun at the crown of head",
-    "bro_flow": "Bro flow hairstyle, medium length wavy hair brushed back naturally",
-    "natural_texture": "Natural textured hairstyle, casual layered volume with tapered sides",
+    "man_bun": "Man bun hairstyle, hair gathered into a neat top knot bun, short tapered sides",
+    "bro_flow": "Bro flow hairstyle, medium length wavy hair flowing naturally backward behind ears",
+    "natural_texture": "Natural textured haircut, soft parted medium length dark hair with subtle taper",
 }
 
 FREETHEAI_API_URL = "https://api.freetheai.xyz/v1/images"
@@ -377,7 +377,10 @@ async def swap_hair_cloudflare(selfie_bytes: bytes, haircut_id: str) -> Optional
                             "rings, loops, circles, wire, metallic, keychains, unnatural artifacts, "
                             "floating objects, background lines, wall seams, ceiling seams, distorted hairline, accessories, "
                             "bald, shaved head, hairless scalp, smooth egg head, elongated head, shiny scalp, "
-                            "hair strands over eyes, hair falling on face, loose strands over cheeks, stray hairs over eyes"
+                            "hair strands over eyes, hair falling on face, loose strands over cheeks, stray hairs over eyes, "
+                            "earring, earrings, ear stud, ear piercing, ear jewelry, hoop earring, silver earring, gold earring, ear metal, "
+                            "headset, headphones, earphones, ear defender, head strap, ear clips, black band around ear, "
+                            "big head, tall head, deformed skull, squished head, flat head, bowl cut"
                         ),
                         "image": image_bytes_array,
                         "mask": mask_bytes_array,

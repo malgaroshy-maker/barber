@@ -68,8 +68,8 @@ if hasattr(cv2, "CascadeClassifier") and hasattr(cv2, "data") and hasattr(cv2.da
 
 
 
-def _detect_face(rgb: np.ndarray, gray: np.ndarray) -> Optional[tuple[int, int, int, int]]:
-    """Return (x, y, w, h) of the most prominent face, or None."""
+def _detect_face_and_landmarks(rgb: np.ndarray, gray: np.ndarray) -> Optional[dict]:
+    """Return dict with face bounding box (x,y,w,h) and 5 landmarks (eyes, nose, mouth) or None."""
     detector = _get_yunet()
     if detector is not None:
         h, w = rgb.shape[:2]
@@ -77,7 +77,14 @@ def _detect_face(rgb: np.ndarray, gray: np.ndarray) -> Optional[tuple[int, int, 
         _, faces = detector.detect(rgb)
         if faces is not None and len(faces) > 0:
             f = max(faces, key=lambda f: f[2] * f[3])
-            return (int(f[0]), int(f[1]), int(f[2]), int(f[3]))
+            return {
+                "bbox": (int(f[0]), int(f[1]), int(f[2]), int(f[3])),
+                "right_eye": (float(f[4]), float(f[5])),
+                "left_eye": (float(f[6]), float(f[7])),
+                "nose": (float(f[8]), float(f[9])),
+                "right_mouth": (float(f[10]), float(f[11])),
+                "left_mouth": (float(f[12]), float(f[13])),
+            }
     # Fallback ensemble
     boxes: list[tuple[int, int, int, int]] = []
     seen: set[tuple[int, int]] = set()
@@ -95,12 +102,32 @@ def _detect_face(rgb: np.ndarray, gray: np.ndarray) -> Optional[tuple[int, int, 
             boxes.append((int(x), int(y), int(w), int(h)))
     if not boxes:
         return None
-    return max(boxes, key=lambda b: b[2] * b[3])
+    bx, by, bw, bh = max(boxes, key=lambda b: b[2] * b[3])
+    # Synthesize estimated landmarks from Haar bounding box
+    return {
+        "bbox": (bx, by, bw, bh),
+        "right_eye": (bx + bw * 0.30, by + bh * 0.35),
+        "left_eye": (bx + bw * 0.70, by + bh * 0.35),
+        "nose": (bx + bw * 0.50, by + bh * 0.55),
+        "right_mouth": (bx + bw * 0.35, by + bh * 0.75),
+        "left_mouth": (bx + bw * 0.65, by + bh * 0.75),
+    }
 
 
-SHORT_CUT_IDS = {
-    "buzz_cut", "crew_cut", "caesar_cut", "french_crop",
-    "fade_low", "fade_mid_skin", "ivy_league", "textured_crop"
+def _detect_face(rgb: np.ndarray, gray: np.ndarray) -> Optional[tuple[int, int, int, int]]:
+    """Return (x, y, w, h) of the most prominent face, or None."""
+    res = _detect_face_and_landmarks(rgb, gray)
+    if res is None:
+        return None
+    return res["bbox"]
+
+
+VERY_SHORT_CUT_IDS = {
+    "buzz_cut", "crew_cut", "caesar_cut", "ivy_league"
+}
+
+HIGH_VOLUME_CUT_IDS = {
+    "pompadour", "afro", "high_top", "man_bun"
 }
 
 FADE_CUT_IDS = {
@@ -112,11 +139,11 @@ FADE_CUT_IDS = {
 def create_hair_mask(image_bytes: bytes, padding: float = 0.40, haircut_id: Optional[str] = None) -> bytes:
     """Return a PNG mask image (same size as input) covering the hair region.
 
-    The mask covers the hair on top and sides (including temples & sideburns)
-    while preserving the face, eyes, and beard. Uses a multi-region approach.
+    The mask covers the hair on top and sides while preserving the face,
+    eyes, ears, earlobes, and beard. Uses a multi-region approach.
 
     White = region to inpaint (hair).
-    Black = region to preserve (face / body / background).
+    Black = region to preserve (face / body / background / ears).
     """
     image = Image.open(BytesIO(image_bytes)).convert("RGB")
     img_w, img_h = image.size
@@ -127,7 +154,6 @@ def create_hair_mask(image_bytes: bytes, padding: float = 0.40, haircut_id: Opti
 
     if face is None:
         logger.warning("No face detected for hair mask; falling back to top 40% mask")
-        # Fallback: mask the top 40% of the image.
         mask = np.zeros((img_h, img_w), dtype=np.uint8)
         cutoff = int(img_h * 0.40)
         mask[:cutoff, :] = 255
@@ -137,28 +163,23 @@ def create_hair_mask(image_bytes: bytes, padding: float = 0.40, haircut_id: Opti
 
     mask = np.zeros((img_h, img_w), dtype=np.uint8)
 
-    # Dynamic top clearance:
-    # Short cuts (buzz cut, crew cut) need a tight top mask so SD doesn't draw an extended bald scalp.
-    # Volume cuts (pompadour, afro) get more top headroom.
-    if haircut_id and haircut_id in SHORT_CUT_IDS:
+    # Balanced top clearance to prevent both 'big head' (too tall) and 'smashed head' (too flat):
+    if haircut_id and haircut_id in VERY_SHORT_CUT_IDS:
         head_top = max(0, int(y - 0.22 * h))
+    elif haircut_id and haircut_id in HIGH_VOLUME_CUT_IDS:
+        head_top = max(0, int(y - 0.42 * h))
     else:
-        head_top = max(0, int(y - 0.55 * h))
+        # Standard cuts (french_crop, fade_classic, quiff, etc.) get natural 0.32*h height
+        head_top = max(0, int(y - 0.32 * h))
     
-    # Forehead/eyebrow level (covers upper forehead bangs down to just above eyebrows)
-    forehead_bottom = int(y + h * 0.28)
+    # Forehead level (covers forehead bangs down to just above eyebrows)
+    forehead_bottom = int(y + h * 0.24)
     
-    # Dynamic side & ear level (for fades/tapers, cover down past sideburns to y + 0.70*h)
-    if haircut_id and haircut_id in FADE_CUT_IDS:
-        ear_level = int(y + h * 0.70)
-        side_extension = int(w * 0.35)
-        inner_left = x + int(w * 0.08)
-        inner_right = x + int(w * 0.92)
-    else:
-        ear_level = int(y + h * 0.58)
-        side_extension = int(w * 0.30)
-        inner_left = x
-        inner_right = x + w
+    # Ear level (stop at mid-ear y + 0.52*h to strictly protect ears & earlobes from earrings/headsets)
+    ear_level = int(y + h * 0.52)
+    side_extension = int(w * 0.28)
+    inner_left = x
+    inner_right = x + w
     
     # Region 1: Top hair (dome over head bounded by face width + side extension)
     top_pts = np.array([
@@ -169,7 +190,7 @@ def create_hair_mask(image_bytes: bytes, padding: float = 0.40, haircut_id: Opti
     ], dtype=np.int32)
     cv2.fillPoly(mask, [top_pts], 255)
     
-    # Region 2: Left side hair & sideburn area (temple taper)
+    # Region 2: Left side hair (temple area)
     left_side_pts = np.array([
         [max(0, x - side_extension), forehead_bottom],
         [max(0, x - side_extension), ear_level],
@@ -178,7 +199,7 @@ def create_hair_mask(image_bytes: bytes, padding: float = 0.40, haircut_id: Opti
     ], dtype=np.int32)
     cv2.fillPoly(mask, [left_side_pts], 255)
     
-    # Region 3: Right side hair & sideburn area (temple taper)
+    # Region 3: Right side hair (temple area)
     right_side_pts = np.array([
         [inner_right, forehead_bottom],
         [inner_right, ear_level],
@@ -188,7 +209,7 @@ def create_hair_mask(image_bytes: bytes, padding: float = 0.40, haircut_id: Opti
     cv2.fillPoly(mask, [right_side_pts], 255)
 
     # Blur mask edges for smoother inpainting & skin transitions
-    mask = cv2.GaussianBlur(mask, (35, 35), 0)
+    mask = cv2.GaussianBlur(mask, (31, 31), 0)
 
     return _encode_mask(mask)
 
