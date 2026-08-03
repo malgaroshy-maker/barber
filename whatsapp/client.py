@@ -30,6 +30,14 @@ async def send_image(to: str, image_url: str, caption: str = "") -> dict:
     if USE_OPENWA:
         from whatsapp.openwa_client import send_image as openwa_send_image
         return await openwa_send_image(to, image_url, caption)
+
+    if "localhost" in image_url or "127.0.0.1" in image_url or "/static/" in image_url:
+        from pathlib import Path
+        filename = image_url.split("/static/")[-1].split("?")[0]
+        local_path = Path("static") / filename
+        if local_path.exists():
+            return await upload_media_and_send_image(to, local_path.read_bytes(), caption=caption)
+
     payload = {
         "messaging_product": "whatsapp",
         "recipient_type": "individual",

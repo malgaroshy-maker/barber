@@ -187,7 +187,7 @@ async def handle_interactive(phone: str, interactive: dict, session: UserSession
         session.menu_page = 0
         await show_menu(phone, session)
 
-    elif item_id.startswith("fade_") or item_id.startswith("buzz_") or item_id.startswith("pompadour") or item_id.startswith("quiff") or item_id.startswith("crew_") or item_id.startswith("french_"):
+    elif get_haircut_by_id(item_id) is not None:
         session.selected_haircut = item_id
         session.state = ConversationState.AWAITING_SELFIE
         # Reset menu paging so the next "back" returns to the top.
@@ -195,10 +195,13 @@ async def handle_interactive(phone: str, interactive: dict, session: UserSession
         haircut = get_haircut_by_id(item_id)
         ref_url = (haircut or {}).get("image_url", "")
         if ref_url:
-            # Reference image is decorative; don't let a slow external URL
-            # block the rest of the flow.
             try:
-                await wa.send_image(phone, ref_url, caption=haircut.get("name_ar", ""))
+                caption = (
+                    f"✂️ *{haircut.get('name_ar', '')}* ({haircut.get('name_en', '')})\n"
+                    f"💵 السعر: {haircut.get('price_egp', '')} ج.م\n\n"
+                    f"📝 {haircut.get('description_ar', '')}"
+                )
+                await wa.send_image(phone, ref_url, caption=caption)
             except Exception as exc:
                 logger.warning("Reference image send failed for %s: %s", item_id, exc)
         await wa.send_text(phone, s.AWAITING_SELFIE)

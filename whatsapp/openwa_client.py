@@ -83,6 +83,13 @@ async def send_text(to: str, text: str) -> dict:
 
 
 async def send_image(to: str, image_url: str, caption: str = "") -> dict:
+    if "localhost" in image_url or "127.0.0.1" in image_url or "/static/" in image_url:
+        from pathlib import Path
+        filename = image_url.split("/static/")[-1].split("?")[0]
+        local_path = Path("static") / filename
+        if local_path.exists():
+            return await send_image_base64(to, local_path.read_bytes(), caption=caption)
+
     chat_id = _to_chat_id(to)
     payload = {
         "chatId": chat_id,
