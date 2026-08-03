@@ -43,35 +43,31 @@ HAIRCUT_PROMPTS = {
     "buzz_cut": "Buzz cut hairstyle, short textured dark hair fade on top, clean short hair trim, neat hairline, dark short hair density, stylish barber buzz cut",
     "crew_cut": "Crew cut, short tapered haircut with slightly longer hair on top front",
     "french_crop": "French crop haircut, natural short forward textured hair fringe across upper forehead, natural head volume, clean tapered sides",
-    "caesar_cut": "Modern Caesar haircut, short straight horizontal fringe, short textured top",
     "ivy_league": "Ivy league haircut, short side-parted comb-over with clean tapered sides",
+    "textured_crop": "Textured crop haircut, short choppy textured top, skin faded sides, clean hairline",
     # Volume / classic
     "pompadour": "Classic pompadour haircut, moderate swept-back front hair volume, clean tapered sides, natural hairline",
     "quiff": "Quiff hairstyle, medium length hair brushed up and forward at the front, faded sides",
-    "textured_quiff": "Textured quiff hairstyle, messy voluminous hair on top, short faded sides",
     "brush_up": "Brush up hairstyle, hair styled straight upward with texture, tapered sides",
     "slick_back": "Slicked back hairstyle, hair combed straight back with pomade, short sides",
     "side_part": "Classic side part haircut, distinct side hair part line, neat comb-over",
-    "comb_over": "Modern comb over hairstyle with hard side part and low skin fade",
     # Fringe / medium
     "angular_fringe": "Angular fringe hairstyle, textured bangs swept diagonally to one side, faded sides",
     "messy_fringe": "Messy fringe hairstyle, casual forward bangs falling near forehead, tapered sides",
     "curtain": "Middle part 90s curtain haircut, natural hair parted down the center falling gracefully to both sides",
     "wolf_cut": "Wolf cut hairstyle, shaggy layered textured hair with volume on top and choppy layers",
-    "shag": "Shaggy men's hairstyle, layered messy textured hair with natural fringe",
+    "bro_flow": "Bro flow hairstyle, medium length wavy hair flowing naturally backward behind ears",
     # Edgy / statement
     "undercut": "Disconnected undercut hairstyle, shaved short sides with long hair styled on top",
     "faux_hawk": "Faux hawk hairstyle, short sides with central strip of hair styled upward",
     "modern_mullet": "Modern mullet haircut, short textured hair on front and sides with long hair flowing down the back of neck",
-    # Texture / natural
+    "natural_texture": "Natural textured haircut, soft parted medium length dark hair with subtle taper",
+    # Texture / curls
     "curly_top": "Natural defined tight curly hair on top, voluminous bouncy curls, short faded sides",
     "tapered_curls": "Tapered curly hairstyle, tight natural curls on top with gradually faded sides",
     "afro": "Full rounded afro hairstyle, dense natural kinky hair volume around head",
     "high_top": "High top fade haircut, flat top box haircut with high skin fade on sides",
-    # Long
     "man_bun": "Man bun hairstyle, hair gathered into a neat top knot bun, short tapered sides",
-    "bro_flow": "Bro flow hairstyle, medium length wavy hair flowing naturally backward behind ears",
-    "natural_texture": "Natural textured haircut, soft parted medium length dark hair with subtle taper",
 }
 
 FREETHEAI_API_URL = "https://api.freetheai.xyz/v1/images"

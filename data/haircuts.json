@@ -13,7 +13,8 @@
     "price_egp": 80,
     "description_ar": "قصة الفيد الكلاسيكية الأنيقة والمرتبة",
     "active": true,
-    "sort_order": 1
+    "sort_order": 1,
+    "category": "fades"
   },
   {
     "id": "fade_drop",
@@ -28,7 +29,8 @@
     "price_egp": 90,
     "description_ar": "فيد عصري بإنحدار ناعم خلف الأذن",
     "active": true,
-    "sort_order": 2
+    "sort_order": 2,
+    "category": "fades"
   },
   {
     "id": "fade_mid_skin",
@@ -43,7 +45,8 @@
     "price_egp": 90,
     "description_ar": "فيد جريء ينتهي فوق الأذن مع حلاقة نظيفة للغاية",
     "active": true,
-    "sort_order": 3
+    "sort_order": 3,
+    "category": "fades"
   },
   {
     "id": "fade_low",
@@ -58,7 +61,8 @@
     "price_egp": 80,
     "description_ar": "فيد ناعم يبدأ فوق الأذن وخط الرقبة",
     "active": true,
-    "sort_order": 4
+    "sort_order": 4,
+    "category": "fades"
   },
   {
     "id": "fade_high",
@@ -73,7 +77,8 @@
     "price_egp": 90,
     "description_ar": "فيد مرتفع يبدأ عالياً على الجوانب لإطلالة عصرية",
     "active": true,
-    "sort_order": 5
+    "sort_order": 5,
+    "category": "fades"
   },
   {
     "id": "burst_fade",
@@ -88,7 +93,8 @@
     "price_egp": 100,
     "description_ar": "فيد دائري حول الأذن بإنحدار مميز",
     "active": true,
-    "sort_order": 6
+    "sort_order": 6,
+    "category": "modern"
   },
   {
     "id": "pompadour",
@@ -104,7 +110,8 @@
     "price_egp": 100,
     "description_ar": "قصة كلاسيكية عصرية بشعر مرفوع للأعلى",
     "active": true,
-    "sort_order": 7
+    "sort_order": 7,
+    "category": "classic"
   },
   {
     "id": "quiff",
@@ -119,7 +126,8 @@
     "price_egp": 85,
     "description_ar": "قصة مودرن بشعر مموج للأعلى والأمام",
     "active": true,
-    "sort_order": 8
+    "sort_order": 8,
+    "category": "classic"
   },
   {
     "id": "brush_up",
@@ -134,7 +142,8 @@
     "price_egp": 85,
     "description_ar": "شعر مرفوع للأعلى بملمس خشن وجوانب قصيرة",
     "active": true,
-    "sort_order": 9
+    "sort_order": 9,
+    "category": "classic"
   },
   {
     "id": "slick_back",
@@ -149,7 +158,8 @@
     "price_egp": 90,
     "description_ar": "شعر منسدل للخلف بإطلالة كلاسيكية أنيقة",
     "active": true,
-    "sort_order": 10
+    "sort_order": 10,
+    "category": "classic"
   },
   {
     "id": "side_part",
@@ -165,7 +175,8 @@
     "price_egp": 80,
     "description_ar": "فرقة جانبية كلاسيكية تناسب كل المناسبات",
     "active": true,
-    "sort_order": 11
+    "sort_order": 11,
+    "category": "classic"
   },
   {
     "id": "french_crop",
@@ -180,7 +191,8 @@
     "price_egp": 75,
     "description_ar": "قصة أوروبية بشعر قصير وفرق أمامي",
     "active": true,
-    "sort_order": 12
+    "sort_order": 12,
+    "category": "short"
   },
   {
     "id": "textured_crop",
@@ -195,7 +207,8 @@
     "price_egp": 80,
     "description_ar": "قصة قصيرة بطبقات خشنة وجوانب فيد",
     "active": true,
-    "sort_order": 13
+    "sort_order": 13,
+    "category": "short"
   },
   {
     "id": "crew_cut",
@@ -210,7 +223,8 @@
     "price_egp": 70,
     "description_ar": "قصة أنيقة قصيرة ومتدرجة من الأمام",
     "active": true,
-    "sort_order": 14
+    "sort_order": 14,
+    "category": "short"
   },
   {
     "id": "ivy_league",
@@ -225,7 +239,8 @@
     "price_egp": 75,
     "description_ar": "قصة أكاديمية أنيقة بطول مناسب للتسريح للجانب",
     "active": true,
-    "sort_order": 15
+    "sort_order": 15,
+    "category": "short"
   },
   {
     "id": "buzz_cut",
@@ -240,7 +255,8 @@
     "price_egp": 60,
     "description_ar": "قصة قصيرة جداً عملية ومريحة",
     "active": true,
-    "sort_order": 16
+    "sort_order": 16,
+    "category": "short"
   },
   {
     "id": "angular_fringe",
@@ -255,7 +271,8 @@
     "price_egp": 85,
     "description_ar": "غرة مائلة بطبقات ناعمة وجوانب قصيرة",
     "active": true,
-    "sort_order": 17
+    "sort_order": 17,
+    "category": "fringes"
   },
   {
     "id": "messy_fringe",
@@ -270,7 +287,8 @@
     "price_egp": 80,
     "description_ar": "غرة أمامية منسدلة بشكل عفوي وشبابي",
     "active": true,
-    "sort_order": 18
+    "sort_order": 18,
+    "category": "fringes"
   },
   {
     "id": "curtain",
@@ -285,7 +303,8 @@
     "price_egp": 85,
     "description_ar": "فرقة وسط مع شعر متوسط ينسدل للجانبين",
     "active": true,
-    "sort_order": 19
+    "sort_order": 19,
+    "category": "fringes"
   },
   {
     "id": "wolf_cut",
@@ -300,7 +319,8 @@
     "price_egp": 95,
     "description_ar": "قصة ذئب بطبقات كثيفة وأطراف ناعمة",
     "active": true,
-    "sort_order": 20
+    "sort_order": 20,
+    "category": "fringes"
   },
   {
     "id": "undercut",
@@ -315,7 +335,8 @@
     "price_egp": 95,
     "description_ar": "جوانب وحافة خلفية قصيرة جداً مع شعر طويل على القمة",
     "active": true,
-    "sort_order": 21
+    "sort_order": 21,
+    "category": "modern"
   },
   {
     "id": "faux_hawk",
@@ -330,7 +351,8 @@
     "price_egp": 90,
     "description_ar": "شعر أطول في المنتصف مرفوع للأعلى بجوانب قصيرة",
     "active": true,
-    "sort_order": 22
+    "sort_order": 22,
+    "category": "modern"
   },
   {
     "id": "modern_mullet",
@@ -345,7 +367,8 @@
     "price_egp": 100,
     "description_ar": "قصة موليت عصرية أمام قصير وخلف طويل",
     "active": true,
-    "sort_order": 23
+    "sort_order": 23,
+    "category": "modern"
   },
   {
     "id": "curly_top",
@@ -360,7 +383,8 @@
     "price_egp": 90,
     "description_ar": "كيرلي مميز على القمة مع فيد على الجوانب",
     "active": true,
-    "sort_order": 24
+    "sort_order": 24,
+    "category": "curls"
   },
   {
     "id": "tapered_curls",
@@ -375,7 +399,8 @@
     "price_egp": 95,
     "description_ar": "خصل كيرلي متدرجة بطريقة ناعمة على الجوانب",
     "active": true,
-    "sort_order": 25
+    "sort_order": 25,
+    "category": "curls"
   },
   {
     "id": "afro",
@@ -390,7 +415,8 @@
     "price_egp": 100,
     "description_ar": "أفرو كلاسيكي بحجم طبيعي ومظهر جريء",
     "active": true,
-    "sort_order": 26
+    "sort_order": 26,
+    "category": "curls"
   },
   {
     "id": "high_top",
@@ -405,7 +431,8 @@
     "price_egp": 100,
     "description_ar": "قمة مسطحة مرتفعة مع فيد حاد على الجوانب",
     "active": true,
-    "sort_order": 27
+    "sort_order": 27,
+    "category": "curls"
   },
   {
     "id": "man_bun",
@@ -420,7 +447,8 @@
     "price_egp": 90,
     "description_ar": "شعر طويل مربوط في كعكة عالية",
     "active": true,
-    "sort_order": 28
+    "sort_order": 28,
+    "category": "curls"
   },
   {
     "id": "bro_flow",
@@ -435,7 +463,8 @@
     "price_egp": 95,
     "description_ar": "شعر متوسط الطول منسدل للخلف بشكل طبيعي",
     "active": true,
-    "sort_order": 29
+    "sort_order": 29,
+    "category": "fringes"
   },
   {
     "id": "natural_texture",
@@ -451,6 +480,7 @@
     "price_egp": 85,
     "description_ar": "إطلالة طبيعية بطبقات خفيفة وحجم بسيط",
     "active": true,
-    "sort_order": 30
+    "sort_order": 30,
+    "category": "modern"
   }
 ]
