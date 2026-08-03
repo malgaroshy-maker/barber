@@ -127,11 +127,11 @@ def create_hair_mask(image_bytes: bytes, padding: float = 0.40) -> bytes:
     mask = np.zeros((img_h, img_w), dtype=np.uint8)
 
     # Define hair regions:
-    # 1. Top hair: full width, from top of head to forehead
-    # 2. Side hair: narrow strips on left/right, from top to ear level
+    # 1. Top hair: full width, extending to top of canvas to allow high-volume styles
+    # 2. Side hair: strips on left/right extending to ear level for tapers/fades
     
-    # Top of head (above face)
-    head_top = max(0, int(y - 0.35 * h))
+    # Top of canvas (above head)
+    head_top = 0
     
     # Forehead/eyebrow level (where hair ends and face begins)
     forehead_bottom = int(y + h * 0.15)
@@ -140,7 +140,7 @@ def create_hair_mask(image_bytes: bytes, padding: float = 0.40) -> bytes:
     ear_level = int(y + h * 0.55)
     
     # Side extension (how far beyond face width to cover)
-    side_extension = int(w * 0.25)
+    side_extension = int(w * 0.30)
     
     # Region 1: Top hair (full width)
     top_pts = np.array([
