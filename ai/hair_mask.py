@@ -103,12 +103,17 @@ SHORT_CUT_IDS = {
     "fade_low", "fade_mid_skin", "ivy_league", "textured_crop"
 }
 
+FADE_CUT_IDS = {
+    "fade_classic", "fade_drop", "fade_mid_skin", "fade_low", "fade_high",
+    "burst_fade", "undercut", "tapered_curls", "high_top", "buzz_cut", "crew_cut", "french_crop"
+}
+
 
 def create_hair_mask(image_bytes: bytes, padding: float = 0.40, haircut_id: Optional[str] = None) -> bytes:
     """Return a PNG mask image (same size as input) covering the hair region.
 
-    The mask covers the hair on top and sides while preserving the face,
-    ears, and beard. Uses a multi-region approach for better accuracy.
+    The mask covers the hair on top and sides (including temples & sideburns)
+    while preserving the face, eyes, and beard. Uses a multi-region approach.
 
     White = region to inpaint (hair).
     Black = region to preserve (face / body / background).
@@ -140,14 +145,20 @@ def create_hair_mask(image_bytes: bytes, padding: float = 0.40, haircut_id: Opti
     else:
         head_top = max(0, int(y - 0.55 * h))
     
-    # Forehead/eyebrow level (where hair ends and face begins)
-    forehead_bottom = int(y + h * 0.15)
+    # Forehead/eyebrow level (covers upper forehead bangs down to just above eyebrows)
+    forehead_bottom = int(y + h * 0.28)
     
-    # Ear level (where side hair ends)
-    ear_level = int(y + h * 0.55)
-    
-    # Side extension (how far beyond face width to cover)
-    side_extension = int(w * 0.30)
+    # Dynamic side & ear level (for fades/tapers, cover down past sideburns to y + 0.70*h)
+    if haircut_id and haircut_id in FADE_CUT_IDS:
+        ear_level = int(y + h * 0.70)
+        side_extension = int(w * 0.35)
+        inner_left = x + int(w * 0.08)
+        inner_right = x + int(w * 0.92)
+    else:
+        ear_level = int(y + h * 0.58)
+        side_extension = int(w * 0.30)
+        inner_left = x
+        inner_right = x + w
     
     # Region 1: Top hair (dome over head bounded by face width + side extension)
     top_pts = np.array([
@@ -158,26 +169,26 @@ def create_hair_mask(image_bytes: bytes, padding: float = 0.40, haircut_id: Opti
     ], dtype=np.int32)
     cv2.fillPoly(mask, [top_pts], 255)
     
-    # Region 2: Left side hair (temple area)
+    # Region 2: Left side hair & sideburn area (temple taper)
     left_side_pts = np.array([
         [max(0, x - side_extension), forehead_bottom],
         [max(0, x - side_extension), ear_level],
-        [x, ear_level],
-        [x, forehead_bottom],
+        [inner_left, ear_level],
+        [inner_left, forehead_bottom],
     ], dtype=np.int32)
     cv2.fillPoly(mask, [left_side_pts], 255)
     
-    # Region 3: Right side hair (temple area)
+    # Region 3: Right side hair & sideburn area (temple taper)
     right_side_pts = np.array([
-        [x + w, forehead_bottom],
-        [x + w, ear_level],
+        [inner_right, forehead_bottom],
+        [inner_right, ear_level],
         [min(img_w, x + w + side_extension), ear_level],
         [min(img_w, x + w + side_extension), forehead_bottom],
     ], dtype=np.int32)
     cv2.fillPoly(mask, [right_side_pts], 255)
 
-    # Blur mask edges for smoother inpainting transitions
-    mask = cv2.GaussianBlur(mask, (31, 31), 0)
+    # Blur mask edges for smoother inpainting & skin transitions
+    mask = cv2.GaussianBlur(mask, (35, 35), 0)
 
     return _encode_mask(mask)
 

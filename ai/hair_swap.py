@@ -376,7 +376,8 @@ async def swap_hair_cloudflare(selfie_bytes: bytes, haircut_id: str) -> Optional
                             "hands, fingers, tools, comb, scissors, barber tools, "
                             "rings, loops, circles, wire, metallic, keychains, unnatural artifacts, "
                             "floating objects, background lines, wall seams, ceiling seams, distorted hairline, accessories, "
-                            "bald, shaved head, hairless scalp, smooth egg head, elongated head, shiny scalp"
+                            "bald, shaved head, hairless scalp, smooth egg head, elongated head, shiny scalp, "
+                            "hair strands over eyes, hair falling on face, loose strands over cheeks, stray hairs over eyes"
                         ),
                         "image": image_bytes_array,
                         "mask": mask_bytes_array,
