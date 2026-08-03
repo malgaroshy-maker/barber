@@ -295,28 +295,70 @@ async def swap_hair_huggingface(haircut_id: str) -> Optional[bytes]:
     return None
 
 
-async def swap_hair_cloudflare(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]:
-    """Use Cloudflare Workers AI inpainting (free tier) to change the hairstyle.
+def detect_hair_color(image_bytes: bytes) -> str:
+    """Analyze face/eyebrow/hair region to detect natural hair color."""
+    try:
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img is None:
+            return "natural hair color matching subject's beard and eyebrows"
+        
+        h, w = img.shape[:2]
+        # Sample upper face / eyebrow / hair region
+        sample_y1 = int(h * 0.15)
+        sample_y2 = int(h * 0.45)
+        sample_x1 = int(w * 0.25)
+        sample_x2 = int(w * 0.75)
+        crop = img[sample_y1:sample_y2, sample_x1:sample_x2]
+        
+        if crop.size == 0:
+            return "natural hair color matching subject's beard and eyebrows"
+        
+        # Convert BGR to HSV
+        hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+        v_channel = hsv[:, :, 2]
+        dark_mask = v_channel < 140
+        
+        if not np.any(dark_mask):
+            return "natural dark hair color matching subject's beard and eyebrows"
+        
+        mean_v = float(np.mean(v_channel[dark_mask]))
+        s_channel = hsv[:, :, 1]
+        mean_s = float(np.mean(s_channel[dark_mask]))
+        h_channel = hsv[:, :, 0]
+        mean_h = float(np.mean(h_channel[dark_mask]))
+        
+        if mean_v < 45:
+            return "natural jet black hair color matching subject's eyebrows"
+        elif mean_v < 90:
+            return "natural rich dark brown hair color matching subject's eyebrows and beard"
+        elif mean_h < 25 and mean_s > 40:
+            return "natural warm chestnut brown hair color matching subject's eyebrows"
+        elif mean_v > 120 and mean_s < 50:
+            return "natural light brown hair color matching subject's eyebrows"
+        else:
+            return "natural dark brown hair color matching subject's beard and eyebrows"
+    except Exception as exc:
+        logger.warning("Hair color detection error: %s", exc)
+        return "natural hair color matching subject's beard and eyebrows"
 
-    Pads non-square input to square before sending and crops the result
-    back afterwards to prevent SD 1.5's 512×512 native resolution from
-    stretching the image.
-    """
+
+async def swap_hair_cloudflare(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]:
+    """Inpaint haircut onto selfie using Cloudflare Workers AI SD 1.5 Inpainting."""
     if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
-        logger.warning("Cloudflare credentials not configured")
+        logger.warning("Cloudflare credentials missing; skipping Workers AI inpainting")
         return None
 
     url = (
-        f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}"
-        f"/ai/run/{CLOUDFLARE_INPAINTING_MODEL}"
+        f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/"
+        f"ai/run/{CLOUDFLARE_INPAINTING_MODEL}"
     )
 
-    prompt = HAIRCUT_PROMPTS.get(haircut_id, f"{haircut_id} hairstyle")
+    haircut_prompt = HAIRCUT_PROMPTS.get(haircut_id, f"{haircut_id} haircut")
+    hair_color_desc = detect_hair_color(selfie_bytes)
     full_prompt = (
-        f"Portrait photo of a man with {prompt}. "
-        f"Only change the hair. Keep the exact same face, eyes, nose, mouth, ears, skin tone, "
-        f"facial features, expression, clothing, and background. "
-        f"Photorealistic, natural lighting, sharp focus."
+        f"{haircut_prompt}, {hair_color_desc}, highly detailed photorealistic barber headshot, "
+        f"perfect natural lighting, seamless skin tone match"
     )
 
     try:
@@ -380,7 +422,8 @@ async def swap_hair_cloudflare(selfie_bytes: bytes, haircut_id: str) -> Optional
                             "hair strands over eyes, hair falling on face, loose strands over cheeks, stray hairs over eyes, "
                             "earring, earrings, ear stud, ear piercing, ear jewelry, hoop earring, silver earring, gold earring, ear metal, "
                             "headset, headphones, earphones, ear defender, head strap, ear clips, black band around ear, "
-                            "big head, tall head, deformed skull, squished head, flat head, bowl cut"
+                            "big head, tall head, deformed skull, squished head, flat head, bowl cut, "
+                            "dyed hair, wrong hair color, changed hair color, unnatural hair dye, mismatched eyebrow color, bleach blonde hair"
                         ),
                         "image": image_bytes_array,
                         "mask": mask_bytes_array,
