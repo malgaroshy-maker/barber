@@ -40,7 +40,7 @@ test_real_face.jpg
 test_*.jpg
 test_*.png
 test_*.webp
-test_*.py
+/test_*.py
 test.jpeg
 test_mask_*.png
 test_mask_*.jpg
