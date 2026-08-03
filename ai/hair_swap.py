@@ -40,7 +40,7 @@ HAIRCUT_PROMPTS = {
     "fade_high": "High fade haircut, fade starting high on sides with short top",
     "burst_fade": "Burst fade haircut, circular fade radiating around ears, textured top",
     # Short / military
-    "buzz_cut": "Buzz cut, very short uniform 1mm stubble hair length all over scalp, military cut",
+    "buzz_cut": "Buzz cut hairstyle, short textured dark hair fade on top, clean short hair trim, neat hairline, dark short hair density, stylish barber buzz cut",
     "crew_cut": "Crew cut, short tapered haircut with slightly longer hair on top front",
     "french_crop": "French crop haircut with straight horizontal blunt fringe across forehead, textured forward bangs, skin fade sides",
     "caesar_cut": "Modern Caesar haircut, short straight horizontal fringe, short textured top",
@@ -320,7 +320,7 @@ async def swap_hair_cloudflare(selfie_bytes: bytes, haircut_id: str) -> Optional
     )
 
     try:
-        mask_bytes = create_hair_mask(selfie_bytes)
+        mask_bytes = create_hair_mask(selfie_bytes, haircut_id=haircut_id)
     except Exception as exc:
         logger.warning("Failed to create hair mask: %s", exc)
         return None
@@ -375,7 +375,8 @@ async def swap_hair_cloudflare(selfie_bytes: bytes, haircut_id: str) -> Optional
                             "oversaturated, cartoon, painting, 3d render, illustration, "
                             "hands, fingers, tools, comb, scissors, barber tools, "
                             "rings, loops, circles, wire, metallic, keychains, unnatural artifacts, "
-                            "floating objects, background lines, wall seams, ceiling seams, distorted hairline, accessories"
+                            "floating objects, background lines, wall seams, ceiling seams, distorted hairline, accessories, "
+                            "bald, shaved head, hairless scalp, smooth egg head, elongated head, shiny scalp"
                         ),
                         "image": image_bytes_array,
                         "mask": mask_bytes_array,

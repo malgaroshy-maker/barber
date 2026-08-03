@@ -98,7 +98,13 @@ def _detect_face(rgb: np.ndarray, gray: np.ndarray) -> Optional[tuple[int, int, 
     return max(boxes, key=lambda b: b[2] * b[3])
 
 
-def create_hair_mask(image_bytes: bytes, padding: float = 0.40) -> bytes:
+SHORT_CUT_IDS = {
+    "buzz_cut", "crew_cut", "caesar_cut", "french_crop",
+    "fade_low", "fade_mid_skin", "ivy_league", "textured_crop"
+}
+
+
+def create_hair_mask(image_bytes: bytes, padding: float = 0.40, haircut_id: Optional[str] = None) -> bytes:
     """Return a PNG mask image (same size as input) covering the hair region.
 
     The mask covers the hair on top and sides while preserving the face,
@@ -126,12 +132,13 @@ def create_hair_mask(image_bytes: bytes, padding: float = 0.40) -> bytes:
 
     mask = np.zeros((img_h, img_w), dtype=np.uint8)
 
-    # Define hair regions:
-    # 1. Top hair: full width, extending to top of canvas to allow high-volume styles
-    # 2. Side hair: strips on left/right extending to ear level for tapers/fades
-    
-    # Top clearance above scalp (70% of face height gives full volume room while preserving background wall)
-    head_top = max(0, int(y - 0.70 * h))
+    # Dynamic top clearance:
+    # Short cuts (buzz cut, crew cut) need a tight top mask so SD doesn't draw an extended bald scalp.
+    # Volume cuts (pompadour, afro) get more top headroom.
+    if haircut_id and haircut_id in SHORT_CUT_IDS:
+        head_top = max(0, int(y - 0.22 * h))
+    else:
+        head_top = max(0, int(y - 0.55 * h))
     
     # Forehead/eyebrow level (where hair ends and face begins)
     forehead_bottom = int(y + h * 0.15)
