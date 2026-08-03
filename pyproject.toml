@@ -28,3 +28,8 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = ["app*", "whatsapp*", "ai*", "conversation*", "booking*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+

@@ -54,12 +54,18 @@ def _get_yunet():
 
 
 # Fallback: 4-cascade Haar ensemble.
-_FALLBACK_CASCADES = [
-    cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml"),
-    cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml"),
-    cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_alt.xml"),
-    cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_profileface.xml"),
-]
+_FALLBACK_CASCADES = []
+if hasattr(cv2, "CascadeClassifier") and hasattr(cv2, "data") and hasattr(cv2.data, "haarcascades"):
+    try:
+        _FALLBACK_CASCADES = [
+            cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml"),
+            cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml"),
+            cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_alt.xml"),
+            cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_profileface.xml"),
+        ]
+    except Exception:
+        _FALLBACK_CASCADES = []
+
 
 
 def _detect_face(rgb: np.ndarray, gray: np.ndarray) -> Optional[tuple[int, int, int, int]]:
