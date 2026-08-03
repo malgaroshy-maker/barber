@@ -25,10 +25,7 @@ env/
 Thumbs.db
 
 # Node.js (OpenWA gateway)
-openwa/node_modules/
-openwa/dist/
-openwa/dashboard/node_modules/
-openwa/dashboard/dist/
+openwa/
 
 # Build
 dist/
@@ -43,6 +40,8 @@ test_real_face.jpg
 test_*.jpg
 test_*.png
 test_*.webp
+test_*.py
+test.jpeg
 test_mask_*.png
 test_mask_*.jpg
 icedit_hair_output.webp
