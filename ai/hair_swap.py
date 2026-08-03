@@ -33,46 +33,45 @@ CLOUDFLARE_INPAINTING_MODEL = "@cf/runwayml/stable-diffusion-v1-5-inpainting"
 
 HAIRCUT_PROMPTS = {
     # Fades
-    "fade_classic": "Classic fade haircut with short faded sides and slightly longer top, clean and elegant",
-    "fade_drop": "Drop fade haircut with a low fade curving behind the ears, short textured top",
-    "fade_mid_skin": "Mid skin fade haircut with very short faded sides ending above the ears",
-    "fade_low": "Low fade haircut with a subtle taper just above the ears and neckline",
-    "fade_high": "High fade haircut with the fade starting high on the sides",
-    "burst_fade": "Burst fade haircut with the fade radiating around the ears",
+    "fade_classic": "Classic fade haircut, neatly tapered short faded sides with comb-over top, clean hair line",
+    "fade_drop": "Drop fade haircut, low fade curving behind ears, short textured top",
+    "fade_mid_skin": "Mid skin fade haircut, skin-short faded sides ending above ears, neat top",
+    "fade_low": "Low fade haircut, subtle taper just above ears and neckline",
+    "fade_high": "High fade haircut, fade starting high on sides with short top",
+    "burst_fade": "Burst fade haircut, circular fade radiating around ears, textured top",
     # Short / military
-    "buzz_cut": "Buzz cut, very short uniform length all over, clean military style haircut",
+    "buzz_cut": "Buzz cut, very short uniform 1mm stubble hair length all over scalp, military cut",
     "crew_cut": "Crew cut, short tapered haircut with slightly longer hair on top front",
-    "french_crop": "French crop with short fringe forward, textured top, faded back and sides",
-    "caesar_cut": "Modern Caesar haircut with short horizontal fringe, neat and textured",
-    "ivy_league": "Ivy league haircut, short tapered sides with slightly longer top parted to the side",
+    "french_crop": "French crop haircut with straight horizontal blunt fringe across forehead, textured forward bangs, skin fade sides",
+    "caesar_cut": "Modern Caesar haircut, short straight horizontal fringe, short textured top",
+    "ivy_league": "Ivy league haircut, short side-parted comb-over with clean tapered sides",
     # Volume / classic
-    "pompadour": "Pompadour hairstyle with voluminous hair swept up and back, short faded sides",
-    "quiff": "Quiff hairstyle with medium length hair swept up and back, faded sides and modern look",
-    "textured_quiff": "Textured quiff hairstyle with messy volume on top and very short sides",
-    "brush_up": "Brush up hairstyle with hair styled upward, textured top and tapered sides",
-    "slick_back": "Slicked back hairstyle with hair combed straight back, short sides",
-    "side_part": "Classic side part hairstyle with neat comb over and tapered sides",
-    "comb_over": "Modern comb over hairstyle with a side part and low fade",
+    "pompadour": "Pompadour hairstyle, high volume hair swept up and backward, short tapered sides",
+    "quiff": "Quiff hairstyle, medium length hair brushed up and forward at the front, faded sides",
+    "textured_quiff": "Textured quiff hairstyle, messy voluminous hair on top, short faded sides",
+    "brush_up": "Brush up hairstyle, hair styled straight upward with texture, tapered sides",
+    "slick_back": "Slicked back hairstyle, hair combed straight back with pomade, short sides",
+    "side_part": "Classic side part haircut, distinct side hair part line, neat comb-over",
+    "comb_over": "Modern comb over hairstyle with hard side part and low skin fade",
     # Fringe / medium
-    "angular_fringe": "Angular fringe hairstyle with textured fringe swept to one side, short sides",
-    "messy_fringe": "Messy fringe hairstyle with tousled bangs forward, tapered sides",
-    "curtain": "Middle part curtains hairstyle with hair parted in the middle and falling to both sides",
-    "wolf_cut": "Wolf cut hairstyle with shaggy layered hair, longer top and textured ends",
-    "shag": "Shaggy men's hairstyle with layered messy hair and textured fringe",
+    "angular_fringe": "Angular fringe hairstyle, textured bangs swept diagonally to one side, faded sides",
+    "messy_fringe": "Messy fringe hairstyle, casual forward bangs falling near forehead, tapered sides",
+    "curtain": "Middle part 90s curtain haircut, natural hair parted down the center falling gracefully to both sides",
+    "wolf_cut": "Wolf cut hairstyle, shaggy layered textured hair with volume on top and choppy layers",
+    "shag": "Shaggy men's hairstyle, layered messy textured hair with natural fringe",
     # Edgy / statement
-    "undercut": "Disconnected undercut with very short sides and long hair on top",
-    "faux_hawk": "Faux hawk hairstyle with short sides and longer hair styled up in the center",
-    "modern_mullet": "Modern mullet haircut with short front and sides, longer textured back",
+    "undercut": "Disconnected undercut hairstyle, shaved short sides with long hair styled on top",
+    "faux_hawk": "Faux hawk hairstyle, short sides with central strip of hair styled upward",
+    "modern_mullet": "Modern mullet haircut, short textured hair on front and sides with long hair flowing down the back of neck",
     # Texture / natural
-    "textured_crop": "Textured crop hairstyle with short choppy textured top and faded sides",
-    "natural_texture": "Natural textured men's hairstyle with messy volume and tapered sides",
-    "curly_top": "Curly top hairstyle with defined curls on top and faded sides",
-    "tapered_curls": "Tapered curls hairstyle with tight curls on top and gradually faded sides",
-    "afro": "Classic rounded afro hairstyle, full natural volume",
-    "high_top": "High top fade haircut with flat top and very short faded sides",
+    "curly_top": "Natural defined tight curly hair on top, voluminous bouncy curls, short faded sides",
+    "tapered_curls": "Tapered curly hairstyle, tight natural curls on top with gradually faded sides",
+    "afro": "Full rounded afro hairstyle, dense natural kinky hair volume around head",
+    "high_top": "High top fade haircut, flat top box haircut with high skin fade on sides",
     # Long
-    "man_bun": "Man bun hairstyle with long hair tied up in a bun on top",
-    "bro_flow": "Bro flow hairstyle with medium length hair pushed back and flowing naturally",
+    "man_bun": "Man bun hairstyle, long hair pulled back into a neat top-knot bun at the crown of head",
+    "bro_flow": "Bro flow hairstyle, medium length wavy hair brushed back naturally",
+    "natural_texture": "Natural textured hairstyle, casual layered volume with tapered sides",
 }
 
 FREETHEAI_API_URL = "https://api.freetheai.xyz/v1/images"
@@ -374,12 +373,14 @@ async def swap_hair_cloudflare(selfie_bytes: bytes, haircut_id: str) -> Optional
                             "blurry, distorted face, changed face, different person, ugly, "
                             "deformed, low quality, bad proportions, unnatural skin, bad lighting, "
                             "oversaturated, cartoon, painting, 3d render, illustration, "
-                            "hands, fingers, tools, comb, scissors, barber tools"
+                            "hands, fingers, tools, comb, scissors, barber tools, "
+                            "rings, loops, circles, wire, metallic, keychains, unnatural artifacts, "
+                            "floating objects, background lines, wall seams, ceiling seams, distorted hairline, accessories"
                         ),
                         "image": image_bytes_array,
                         "mask": mask_bytes_array,
                         "num_steps": 20,
-                        "guidance": 6.0,
+                        "guidance": 7.0,
                     },
                 )
 
@@ -425,9 +426,6 @@ async def run_hair_swap(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]
     logger.info("Trying Cloudflare Workers AI inpainting (free tier)")
     result = await swap_hair_cloudflare(selfie_bytes, haircut_id)
     if result:
-        # Color matching disabled — histogram matching on entire image
-        # was causing washed-out results. SD 1.5 already preserves colors
-        # reasonably well with the improved prompt.
         return result
 
     logger.info("Cloudflare failed, trying Replicate img2img (flux-kontext-pro)")
@@ -445,10 +443,5 @@ async def run_hair_swap(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]
     if result:
         return result
 
-    logger.info("FreeTheAI failed, trying Pollinations AI (fallback)")
-    result = await generate_image_pollinations(haircut_id)
-    if result:
-        return result
-
-    logger.info("Pollinations failed, trying HuggingFace")
-    return await swap_hair_huggingface(haircut_id)
+    logger.warning("All face-preserving inpainting providers failed; falling back to reference image")
+    return None

@@ -130,8 +130,8 @@ def create_hair_mask(image_bytes: bytes, padding: float = 0.40) -> bytes:
     # 1. Top hair: full width, extending to top of canvas to allow high-volume styles
     # 2. Side hair: strips on left/right extending to ear level for tapers/fades
     
-    # Top of canvas (above head)
-    head_top = 0
+    # Top clearance above scalp (70% of face height gives full volume room while preserving background wall)
+    head_top = max(0, int(y - 0.70 * h))
     
     # Forehead/eyebrow level (where hair ends and face begins)
     forehead_bottom = int(y + h * 0.15)
@@ -142,12 +142,12 @@ def create_hair_mask(image_bytes: bytes, padding: float = 0.40) -> bytes:
     # Side extension (how far beyond face width to cover)
     side_extension = int(w * 0.30)
     
-    # Region 1: Top hair (full width)
+    # Region 1: Top hair (dome over head bounded by face width + side extension)
     top_pts = np.array([
-        [0, head_top],
-        [0, forehead_bottom],
-        [img_w, forehead_bottom],
-        [img_w, head_top],
+        [max(0, x - side_extension), head_top],
+        [max(0, x - side_extension), forehead_bottom],
+        [min(img_w, x + w + side_extension), forehead_bottom],
+        [min(img_w, x + w + side_extension), head_top],
     ], dtype=np.int32)
     cv2.fillPoly(mask, [top_pts], 255)
     
