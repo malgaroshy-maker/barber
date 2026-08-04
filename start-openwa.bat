@@ -32,16 +32,16 @@ if not exist "openwa\.env" (
 )
 
 echo [1/4] Starting OpenWA Dashboard (Vite dev server, port 2886)...
-start "OpenWA Dashboard" /min cmd /c "cd openwa\dashboard && npm run dev"
+start "OpenWA Dashboard" cmd /k "cd openwa\dashboard && npm run dev"
 
 echo [2/4] Starting OpenWA API (Nest, port 2785)...
-start "OpenWA Gateway" /min cmd /c "cd openwa && npm start"
+start "OpenWA Gateway" cmd /k "cd openwa && npm start"
 
 echo [3/4] Waiting 8 seconds for OpenWA services to boot...
 timeout /t 8 /nobreak >nul
 
 echo [4/4] Starting FastAPI server on port 8000...
-start "FastAPI Server" /min .venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+start "FastAPI Server" cmd /k ".venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
 echo.
 echo ================================
