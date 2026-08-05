@@ -5,9 +5,10 @@ from typing import Optional
 
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 
 logger = logging.getLogger(__name__)
+
 
 # Primary detector: OpenCV YuNet (DNN-based, far more accurate than Haar).
 # We try several candidate paths so it works in dev and in bundled apps.
@@ -146,8 +147,10 @@ def validate_selfie(image_bytes: bytes) -> tuple[bool, str]:
     """
     try:
         image = Image.open(BytesIO(image_bytes))
+        image = ImageOps.exif_transpose(image)
     except Exception:
         return False, "تعذر قراءة الصورة"
+
 
     if image.mode != "RGB":
         image = image.convert("RGB")

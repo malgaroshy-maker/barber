@@ -7,6 +7,19 @@ from conversation.state_machine import get_haircut_by_id, get_haircuts, get_reco
 from whatsapp import client as wa
 from whatsapp.interactive import build_decision_buttons, build_haircut_menu_section, build_retry_button
 
+from conversation.catalogue_matcher import (
+    CATEGORIES,
+    detect_try_on_intent,
+    match_category,
+    match_haircut,
+)
+from whatsapp.interactive import (
+    build_category_menu_section,
+    build_decision_buttons,
+    build_haircut_menu_section,
+    build_retry_button,
+)
+
 logger = logging.getLogger(__name__)
 
 sessions: dict[str, UserSession] = {}
@@ -16,6 +29,38 @@ def get_session(phone: str) -> UserSession:
     if phone not in sessions:
         sessions[phone] = UserSession(phone=phone)
     return sessions[phone]
+
+
+async def send_category_cuts(phone: str, category_id: str, session: UserSession) -> None:
+    """Send a formatted catalogue list for all cuts in the requested category."""
+    cat = next((c for c in CATEGORIES if c["id"] == category_id), None)
+    cat_title = cat["title"] if cat else category_id
+
+    haircuts = [
+        h for h in get_haircuts() if h.get("category") == category_id and h.get("active", True)
+    ]
+    if not haircuts:
+        haircuts = get_haircuts()[:4]
+
+    session.active_category = category_id
+    session.category_cuts = haircuts
+    session.state = ConversationState.AWAITING_CHOICE
+
+    lines = [f"✂️ *{cat_title}*:", ""]
+    for i, h in enumerate(haircuts, start=1):
+        name = f"{h.get('name_ar', '')} ({h.get('name_en', '')})"
+        price = f"{h.get('price_egp', '')} ج.م"
+        desc = h.get('description_ar', '')
+        lines.append(f"*{i}. {name}* — {price}")
+        if desc:
+            lines.append(f"   📝 {desc}")
+        lines.append("")
+
+    lines.append("📸 *رد برقم القصة (1، 2، 3...) لمشاهدة صورتها وتجربتها على وشك!*")
+    lines.append("أو اكتب 'ai' والذكاء الاصطناعي هيختارلك القصة اللي تليق عليك.")
+
+    await wa.send_text(phone, "\n".join(lines))
+
 
 
 async def handle_message(phone: str, msg_type: str, payload: dict) -> None:
@@ -38,133 +83,122 @@ async def handle_message(phone: str, msg_type: str, payload: dict) -> None:
 async def handle_text(phone: str, text: str, session: UserSession) -> None:
     state = session.state
 
-    if state == ConversationState.WELCOME:
-        # WELCOME is the very first state for a brand-new session.  But
-        # also treat it as the recovery landing: if the user sends "hi"
-        # again, reset menu state and re-show the menu.
+    token = text.strip().lower()
+
+    # 1. Menu & restart commands
+    if token in ("hi", "hello", "hey", "مرحبا", "menu", "menu.", "القائمة", "القصَات", "القصات", "ابدأ", "start"):
         session.menu_page = 0
         session.selected_haircut = None
         session.result_image_url = None
+        session.active_category = None
+        session.category_cuts = []
         await show_menu(phone, session)
         session.state = ConversationState.AWAITING_CHOICE
+        return
 
-    elif state == ConversationState.AWAITING_CHOICE:
-        # The user is replying to the menu.  We use plain-text paginated
-        # menus under OpenWA, so the reply is a single digit ("3"), a
-        # haircut id ("fade_classic"), a control token ("more", "ai"), or
-        # an Arabic/English word.
-        token = text.strip().lower()
-
-        if token in ("more", "more.", "more!", "التالي", "المزيد", "next", "n", ">"):
-            session.menu_page += 1
-            await show_menu(phone, session)
-            return
-
-        if token in ("back", "back.", "رجوع", "السابق", "prev", "p", "<"):
-            session.menu_page = max(0, session.menu_page - 1)
-            await show_menu(phone, session)
-            return
-
-        if token in ("menu", "menu.", "القائمة", "القصَات", "القصات", "ابدأ", "start"):
-            session.menu_page = 0
-            await show_menu(phone, session)
-            return
-
-        if token in ("ai_recommend", "ai", "اقترحلي", "اختارلي", "اقتراح"):
-            await handle_interactive(phone, {"button_reply": {"id": "ai_recommend", "title": "AI"}}, session)
-            return
-
-        # Numeric reply?  Map to the haircut id on the current page.
-        if token.isdigit():
-            idx = int(token)
-            haircuts = get_haircuts()
-            visible = haircuts[session.menu_page * 3 : session.menu_page * 3 + 3]
-            if 1 <= idx <= len(visible):
-                picked = visible[idx - 1]
-                await handle_interactive(
-                    phone,
-                    {"button_reply": {"id": picked["id"], "title": picked.get("name_ar", picked["id"])}},
-                    session,
-                )
-                return
-            # Index out of range for current page - render the current page
-            # again and gently remind.
-            await show_menu(phone, session)
-            return
-
-        # Direct haircut id (e.g. "fade_classic")
-        if token and any(h["id"] == token for h in get_haircuts()):
-            await handle_interactive(phone, {"button_reply": {"id": token, "title": token}}, session)
-            return
-
-        # Fallback
-        await wa.send_text(phone, s.FALLBACK)
+    if token in ("more", "more.", "more!", "التالي", "المزيد", "next", "n", ">"):
+        session.menu_page += 1
         await show_menu(phone, session)
+        return
 
-    elif state == ConversationState.AWAITING_SELFIE:
+    if token in ("back", "back.", "رجوع", "السابق", "prev", "p", "<"):
+        session.menu_page = max(0, session.menu_page - 1)
+        await show_menu(phone, session)
+        return
+
+    if token in ("ai_recommend", "ai", "اقترحلي", "اختارلي", "اقتراح"):
+        await handle_interactive(phone, {"button_reply": {"id": "ai_recommend", "title": "AI"}}, session)
+        return
+
+    # 2. State-specific rules for AWAITING_SELFIE & AWAITING_DECISION
+    if state == ConversationState.AWAITING_SELFIE:
         await wa.send_text(phone, s.INVALID_IMAGE)
+        return
 
-    elif state == ConversationState.AWAITING_DECISION:
-        # The decision menu is rendered as a numbered list because OpenWA
-        # does not ship native buttons; accept numeric replies here so the
-        # user can answer 1 / 2 instead of typing the button id.
-        token = text.strip().lower()
-        if session.result_image_url:
-            decision_ids = ["confirm_booking", "try_another"]
-        else:
-            decision_ids = ["back_to_menu"]
-
+    if state == ConversationState.AWAITING_DECISION:
+        decision_ids = ["confirm_booking", "try_another"] if session.result_image_url else ["back_to_menu"]
         if token.isdigit():
             idx = int(token) - 1
             if 0 <= idx < len(decision_ids):
                 await handle_interactive(phone, {"button_reply": {"id": decision_ids[idx], "title": token}}, session)
                 return
-
-        if token in ("1", "2"):
-            idx = int(token) - 1
-            if 0 <= idx < len(decision_ids):
-                await handle_interactive(phone, {"button_reply": {"id": decision_ids[idx], "title": token}}, session)
-                return
-
         if token in decision_ids:
             await handle_interactive(phone, {"button_reply": {"id": token, "title": token}}, session)
             return
 
-        # Anything else: re-render the decision menu and let the user try again.
-        buttons = build_decision_buttons() if session.result_image_url else build_retry_button()
-        await wa.send_interactive_buttons(phone, s.TRY_ANOTHER_PROMPT, buttons)
+    # 3. Numeric selection within active category or current menu page (AWAITING_CHOICE)
+    if token.isdigit() and state == ConversationState.AWAITING_CHOICE:
+        idx = int(token)
+        available_cuts = session.category_cuts or get_haircuts()[:3]
+        if 1 <= idx <= len(available_cuts):
+            picked = available_cuts[idx - 1]
+            await handle_interactive(
+                phone,
+                {"button_reply": {"id": picked["id"], "title": picked.get("name_ar", picked["id"])}},
+                session,
+            )
+            return
 
-    elif state in (ConversationState.PROCESSING, ConversationState.BOOKING_CONFIRMED):
-        # After a booking is confirmed (or the bot is mid-processing) accept
-        # an explicit "hi" / "menu" / "ابدأ" to start a fresh flow.  This
-        # makes the bot recoverable if the user ever gets stuck.
-        token = text.strip().lower()
-        if token in ("hi", "hello", "hey", "menu", "ابدأ", "ابدأ من جديد",
-                     "القائمة", "القصَات", "القصات", "start", "restart"):
-            session.state = ConversationState.WELCOME
-            session.selected_haircut = None
-            session.result_image_url = None
-            session.menu_page = 0
-            session.attempts = 0
-            await show_menu(phone, session)
-            session.state = ConversationState.AWAITING_CHOICE
+    # 4. Specific haircut mention & try-on intent
+    matched_cut = match_haircut(text)
+    if matched_cut:
+        if detect_try_on_intent(text) or state == ConversationState.AWAITING_CHOICE:
+            await handle_interactive(
+                phone,
+                {"button_reply": {"id": matched_cut["id"], "title": matched_cut.get("name_ar", matched_cut["id"])}},
+                session,
+            )
             return
-        # For BOOKING_CONFIRMED, also let the user restart with "جرب تاني"
-        if state == ConversationState.BOOKING_CONFIRMED:
-            session.state = ConversationState.WELCOME
-            session.result_image_url = None
-            await wa.send_text(phone, "تمام يا باشا، لو عايز تجرب قصة تانية قولي 'جرب تاني' أو 'menu' ✂️")
-            return
-        # Otherwise stay quiet - the bot is processing or busy.
+
+    # 5. Category selection (by keyword, Arabic name, or numeric choice 1-5 when NO active category)
+    cat_match = match_category(text)
+    if cat_match and not session.category_cuts and state == ConversationState.AWAITING_CHOICE:
+        await send_category_cuts(phone, cat_match["id"], session)
         return
 
 
+    # 6. OpenRouter Gemma LLM response
+    from ai.openrouter_llm import generate_llm_response
+    llm_reply = await generate_llm_response(text, session.chat_history, state.value)
+    if llm_reply:
+        session.chat_history.append({"role": "user", "content": text})
+        session.chat_history.append({"role": "assistant", "content": llm_reply})
+        if len(session.chat_history) > 20:
+            session.chat_history = session.chat_history[-20:]
+        await wa.send_text(phone, llm_reply)
+
+        if matched_cut and matched_cut.get("image_url"):
+            try:
+                caption = f"✂️ *{matched_cut.get('name_ar')}* ({matched_cut.get('price_egp')} ج.م)"
+                await wa.send_image(phone, matched_cut["image_url"], caption=caption)
+            except Exception as exc:
+                logger.warning("Failed to auto-send matched haircut image: %s", exc)
+
+        if state == ConversationState.WELCOME:
+            session.state = ConversationState.AWAITING_CHOICE
+        return
+
+    # 7. Fallback to default state machine logic
+    if state == ConversationState.WELCOME:
+        await show_menu(phone, session)
+        session.state = ConversationState.AWAITING_CHOICE
+    elif state == ConversationState.AWAITING_CHOICE:
+        await wa.send_text(phone, s.FALLBACK)
+        await show_menu(phone, session)
+
+
 async def handle_interactive(phone: str, interactive: dict, session: UserSession) -> None:
+
     reply = interactive.get("button_reply") or interactive.get("list_reply")
     if not reply:
         return
 
     item_id: str = reply.get("id", "")
+
+    if item_id.startswith("cat_"):
+        cat_id = item_id[4:]
+        await send_category_cuts(phone, cat_id, session)
+        return
 
     if item_id == "ai_recommend":
         session.state = ConversationState.AWAITING_SELFIE
@@ -190,8 +224,6 @@ async def handle_interactive(phone: str, interactive: dict, session: UserSession
     elif get_haircut_by_id(item_id) is not None:
         session.selected_haircut = item_id
         session.state = ConversationState.AWAITING_SELFIE
-        # Reset menu paging so the next "back" returns to the top.
-        session.menu_page = 0
         haircut = get_haircut_by_id(item_id)
         ref_url = (haircut or {}).get("image_url", "")
         if ref_url:
@@ -210,10 +242,12 @@ async def handle_interactive(phone: str, interactive: dict, session: UserSession
         await wa.send_text(phone, s.FALLBACK)
 
 
+
 async def handle_image(phone: str, payload: dict, session: UserSession) -> None:
-    if session.state != ConversationState.AWAITING_SELFIE:
+    if session.state not in (ConversationState.AWAITING_SELFIE, ConversationState.AWAITING_CHOICE, ConversationState.WELCOME):
         await wa.send_text(phone, s.FALLBACK)
         return
+
 
     image_obj = payload.get("image") or payload.get("video") or {}
     media_id = image_obj.get("id")

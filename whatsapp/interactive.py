@@ -1,6 +1,31 @@
 from typing import Optional
 
 
+def build_category_menu_section() -> list[dict]:
+    """Build interactive list rows for the 5 catalogue categories."""
+    from conversation.catalogue_matcher import CATEGORIES
+
+    rows = []
+    for cat in CATEGORIES:
+        rows.append({
+            "id": f"cat_{cat['id']}",
+            "title": cat["title"][:24],
+            "description": cat["description"][:72],
+            "image_url": "",
+            "name_ar": cat["title"],
+        })
+
+    rows.append({
+        "id": "ai_recommend",
+        "title": "🌐 اختارلي القصة (AI)",
+        "description": "حلل شكل وشي واقترحلي أفضل قصة تليق عليا",
+        "image_url": "",
+        "name_ar": "اختارلي القصة (AI)",
+    })
+
+    return [{"title": "أقسام صالون الحلاقة ✂️", "rows": rows}]
+
+
 def build_haircut_menu_section(haircuts: list[dict], ai_option: bool = True) -> list[dict]:
     rows = []
     for h in haircuts:
@@ -26,6 +51,7 @@ def build_haircut_menu_section(haircuts: list[dict], ai_option: bool = True) -> 
         })
 
     return [{"title": "القصات المتاحة", "rows": rows}]
+
 
 
 def build_decision_buttons() -> list[dict]:

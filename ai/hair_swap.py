@@ -13,7 +13,7 @@ import numpy as np
 import replicate
 from google import genai
 from google.genai import types as genai_types
-from PIL import Image as PILImage
+from PIL import Image as PILImage, ImageOps as PILImageOps
 
 from ai.hair_mask import create_hair_mask
 from app.config import (
@@ -367,20 +367,27 @@ async def swap_hair_cloudflare(selfie_bytes: bytes, haircut_id: str) -> Optional
     # SD 1.5 inpainting natively operates at 512×512.  We pad the image
     # to a square (centered, with reflective padding) so the model sees
     # a square input, then resize the result back and crop to original.
-    pil_img = PILImage.open(io.BytesIO(selfie_bytes))
+    pil_img = PILImageOps.exif_transpose(PILImage.open(io.BytesIO(selfie_bytes)))
+
     orig_w, orig_h = pil_img.size
     square_size = max(orig_w, orig_h)
 
     if orig_w != orig_h:
-        # Center the image in a square canvas with reflective padding
-        padded_img = PILImage.new("RGB", (square_size, square_size), (0, 0, 0))
-        # Calculate centering offsets
+        # Center the image in a square canvas with reflective background padding
         x_offset = (square_size - orig_w) // 2
         y_offset = (square_size - orig_h) // 2
-        padded_img.paste(pil_img, (x_offset, y_offset))
-        padded_buf = io.BytesIO()
-        padded_img.save(padded_buf, format="JPEG", quality=95)
-        send_image_bytes = padded_buf.getvalue()
+        top_p = y_offset
+        bottom_p = square_size - orig_h - y_offset
+        left_p = x_offset
+        right_p = square_size - orig_w - x_offset
+
+        cv_img = cv2.imdecode(np.frombuffer(selfie_bytes, np.uint8), cv2.IMREAD_COLOR)
+        if cv_img is None:
+            cv_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+
+        padded_bgr = cv2.copyMakeBorder(cv_img, top_p, bottom_p, left_p, right_p, cv2.BORDER_REFLECT_101)
+        _, img_encoded = cv2.imencode(".jpg", padded_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
+        send_image_bytes = img_encoded.tobytes()
 
         # Pad mask correspondingly (centered, black on padded sides = preserve)
         mask_arr = cv2.imdecode(np.frombuffer(mask_bytes, np.uint8), cv2.IMREAD_GRAYSCALE)
@@ -388,6 +395,7 @@ async def swap_hair_cloudflare(selfie_bytes: bytes, haircut_id: str) -> Optional
         padded_mask[y_offset:y_offset + orig_h, x_offset:x_offset + orig_w] = mask_arr
         _, mask_encoded = cv2.imencode(".png", padded_mask)
         send_mask_bytes = mask_encoded.tobytes()
+
     else:
         send_image_bytes = selfie_bytes
         send_mask_bytes = mask_bytes

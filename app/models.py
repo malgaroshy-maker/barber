@@ -24,6 +24,11 @@ class UserSession:
     created_at: datetime = field(default_factory=datetime.now)
     attempts: int = 0
     menu_page: int = 0
+    chat_history: list[dict] = field(default_factory=list)
+    active_category: Optional[str] = None
+    category_cuts: list[dict] = field(default_factory=list)
+
+
 
 
 @dataclass

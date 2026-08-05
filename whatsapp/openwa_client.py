@@ -158,11 +158,7 @@ PAGE_SIZE = 3
 async def _send_numbered_menu(
     to: str, header: str, body: str, rows: list[dict], page: int
 ) -> dict:
-    """Send one page of a numbered menu.  ``page`` is 0-indexed.
-
-    If every row on this page has a non-empty ``image_url`` the menu is
-    rendered as an image carousel; otherwise a plain-text numbered list.
-    """
+    """Send one page of a numbered menu as a clean formatted WhatsApp text message."""
     if not rows:
         return await send_text(to, "\n".join([header, body]).strip() or "(empty)")
 
@@ -172,12 +168,8 @@ async def _send_numbered_menu(
     has_next = end < len(rows)
     has_back = page > 0
 
-    # Determine whether this page can be shown as an image carousel.
-    all_have_images = all(r.get("image_url") for r in page_rows)
-
-    if all_have_images:
-        return await _send_image_carousel(to, page_rows, page, has_next, has_back)
     return await _send_text_menu(to, header, body, page_rows, page, has_next, has_back)
+
 
 
 async def _send_text_menu(

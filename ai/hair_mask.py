@@ -15,9 +15,10 @@ from typing import Optional
 
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 
 logger = logging.getLogger(__name__)
+
 
 # YuNet primary detector (shared model with face_validator).
 _YUNET_CANDIDATES = [
@@ -145,7 +146,9 @@ def create_hair_mask(image_bytes: bytes, padding: float = 0.40, haircut_id: Opti
     White = region to inpaint (hair).
     Black = region to preserve (face / body / background / ears).
     """
-    image = Image.open(BytesIO(image_bytes)).convert("RGB")
+    raw_img = Image.open(BytesIO(image_bytes))
+    image = ImageOps.exif_transpose(raw_img).convert("RGB")
+
     img_w, img_h = image.size
     np_image = np.array(image)
     gray = cv2.cvtColor(np_image, cv2.COLOR_RGB2GRAY)
@@ -171,45 +174,51 @@ def create_hair_mask(image_bytes: bytes, padding: float = 0.40, haircut_id: Opti
     else:
         # Standard cuts (french_crop, fade_classic, quiff, etc.) get natural 0.32*h height
         head_top = max(0, int(y - 0.32 * h))
-    
-    # Forehead level (covers forehead bangs down to just above eyebrows)
-    forehead_bottom = int(y + h * 0.24)
-    
-    # Ear level (stop at mid-ear y + 0.52*h to strictly protect ears & earlobes from earrings/headsets)
-    ear_level = int(y + h * 0.52)
-    side_extension = int(w * 0.28)
-    inner_left = x
-    inner_right = x + w
-    
-    # Region 1: Top hair (dome over head bounded by face width + side extension)
-    top_pts = np.array([
-        [max(0, x - side_extension), head_top],
-        [max(0, x - side_extension), forehead_bottom],
-        [min(img_w, x + w + side_extension), forehead_bottom],
-        [min(img_w, x + w + side_extension), head_top],
+
+    # Forehead level (strictly above eyebrows to preserve 100% of eyebrows and upper face)
+    forehead_bottom = int(y + h * 0.18)
+    ear_level = int(y + h * 0.50)
+    side_extension = int(w * 0.25)
+
+    # Calculate smooth head dome ellipse parameters
+    center_x = int(x + w * 0.50)
+    center_y = forehead_bottom
+    radius_x = int(w * 0.70)
+    radius_y = max(10, int(forehead_bottom - head_top))
+
+    # Draw smooth upper dome ellipse covering head crown (180 to 360 degrees)
+    cv2.ellipse(mask, (center_x, center_y), (radius_x, radius_y), 0, 180, 360, 255, -1)
+
+    # Fill base rect between forehead level and dome height
+    top_rect = np.array([
+        [max(0, center_x - radius_x), head_top + int(radius_y * 0.4)],
+        [max(0, center_x - radius_x), forehead_bottom],
+        [min(img_w, center_x + radius_x), forehead_bottom],
+        [min(img_w, center_x + radius_x), head_top + int(radius_y * 0.4)],
     ], dtype=np.int32)
-    cv2.fillPoly(mask, [top_pts], 255)
-    
-    # Region 2: Left side hair (temple area)
+    cv2.fillPoly(mask, [top_rect], 255)
+
+    # Region 2: Left side hair (temple area down to ear level)
     left_side_pts = np.array([
         [max(0, x - side_extension), forehead_bottom],
         [max(0, x - side_extension), ear_level],
-        [inner_left, ear_level],
-        [inner_left, forehead_bottom],
+        [x, ear_level],
+        [x, forehead_bottom],
     ], dtype=np.int32)
     cv2.fillPoly(mask, [left_side_pts], 255)
-    
-    # Region 3: Right side hair (temple area)
+
+    # Region 3: Right side hair (temple area down to ear level)
     right_side_pts = np.array([
-        [inner_right, forehead_bottom],
-        [inner_right, ear_level],
+        [x + w, forehead_bottom],
+        [x + w, ear_level],
         [min(img_w, x + w + side_extension), ear_level],
         [min(img_w, x + w + side_extension), forehead_bottom],
     ], dtype=np.int32)
     cv2.fillPoly(mask, [right_side_pts], 255)
 
-    # Blur mask edges for smoother inpainting & skin transitions
-    mask = cv2.GaussianBlur(mask, (31, 31), 0)
+    # Gaussian blur (35x35) for smooth edge feathering & realistic skin blending
+    mask = cv2.GaussianBlur(mask, (35, 35), 0)
+
 
     return _encode_mask(mask)
 
