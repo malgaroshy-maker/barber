@@ -5,6 +5,7 @@ import logging
 import re
 import urllib.parse
 from io import BytesIO
+from pathlib import Path
 from typing import Optional
 
 import cv2
@@ -17,6 +18,8 @@ from PIL import Image as PILImage, ImageOps as PILImageOps
 
 from ai.hair_mask import create_hair_mask
 from app.config import (
+    AGY_EFFORT,
+    AGY_MODEL,
     CLOUDFLARE_ACCOUNT_ID,
     CLOUDFLARE_API_TOKEN,
     FREETHEAI_API_KEY,
@@ -42,20 +45,8 @@ HAIRCUT_PROMPTS = {
     # Short / military
     "buzz_cut": "Buzz cut hairstyle, short textured dark hair fade on top, clean short hair trim, neat hairline, dark short hair density, stylish barber buzz cut",
     "crew_cut": "Crew cut, short tapered haircut with slightly longer hair on top front",
-    "french_crop": "French crop haircut, natural short forward textured hair fringe across upper forehead, natural head volume, clean tapered sides",
-    "ivy_league": "Ivy league haircut, short side-parted comb-over with clean tapered sides",
-    "textured_crop": "Textured crop haircut, short choppy textured top, skin faded sides, clean hairline",
-    # Volume / classic
-    "pompadour": "Classic pompadour haircut, moderate swept-back front hair volume, clean tapered sides, natural hairline",
-    "quiff": "Quiff hairstyle, medium length hair brushed up and forward at the front, faded sides",
-    "brush_up": "Brush up hairstyle, hair styled straight upward with texture, tapered sides",
-    "slick_back": "Slicked back hairstyle, hair combed straight back with pomade, short sides",
-    "side_part": "Classic side part haircut, distinct side hair part line, neat comb-over",
-    # Fringe / medium
-    "angular_fringe": "Angular fringe hairstyle, textured bangs swept diagonally to one side, faded sides",
-    "messy_fringe": "Messy fringe hairstyle, casual forward bangs falling near forehead, tapered sides",
-    "curtain": "Middle part 90s curtain haircut, natural hair parted down the center falling gracefully to both sides",
-    "wolf_cut": "Wolf cut hairstyle, shaggy layered textured hair with volume on top and choppy layers",
+    "french_crop": "Modern French crop haircut, short neat straight-cut blunt fringe line high above forehead, clean high skin fade on sides, textured top, perfectly matching dark hair color, natural scalp volume",
+    "wolf_cut": "Modern wolf cut hairstyle for men, medium length layered shag haircut, soft textured curtain bangs framing temples, subtle volume on top, natural dark wavy texture, clean neck and ears, seamless hair blend",
     "bro_flow": "Bro flow hairstyle, medium length wavy hair flowing naturally backward behind ears",
     # Edgy / statement
     "undercut": "Disconnected undercut hairstyle, shaved short sides with long hair styled on top",
@@ -80,7 +71,6 @@ GEMINI_IMAGE_MODELS = [
 
 
 def _image_to_data_uri(img_bytes: bytes, fmt: str = "jpeg") -> str:
-    import base64
     return f"data:image/{fmt};base64,{base64.b64encode(img_bytes).decode()}"
 
 
@@ -200,7 +190,9 @@ async def swap_hair_replicate(selfie_bytes: bytes, haircut_id: str) -> Optional[
         prompt = HAIRCUT_PROMPTS.get(haircut_id, f"{haircut_id} hairstyle")
         selfie_uri = _image_to_data_uri(selfie_bytes)
 
-        output = replicate.run(
+        # replicate.run() is synchronous and blocks for 30+ seconds
+        output = await asyncio.to_thread(
+            replicate.run,
             FLUX_KONTEXT_PRO,
             input={
                 "prompt": f"Give this exact person a {prompt}. Preserve the person's exact face identity, facial structure, skin tone, eye color, expression, age, clothing, body, posture, and background exactly as they are. The ONLY change should be the hairstyle.",
@@ -238,6 +230,7 @@ async def swap_hair_replicate(selfie_bytes: bytes, haircut_id: str) -> Optional[
     except Exception as exc:
         logger.warning("Replicate failed: %s", exc)
         return None
+
 
 
 async def generate_image_pollinations(haircut_id: str) -> Optional[bytes]:
@@ -474,8 +467,110 @@ async def swap_hair_cloudflare(selfie_bytes: bytes, haircut_id: str) -> Optional
     return None
 
 
+IMAGE_MODE_PROMPT = (
+    "\n\nRULES:\n"
+    "- Use the built-in image generation tool to edit the image. "
+    "The result MUST be produced by that tool.\n"
+    "- Do NOT create an HTML file, do NOT use a headless browser or "
+    "screenshot, and do NOT render text or vector markup as a substitute.\n"
+    "- If the image tool fails, retry it up to two more times before giving up.\n"
+    "- Save the image as a PNG file, then finish your reply with exactly "
+    "one line:\n"
+    "IMAGE_PATH: <absolute path to the saved image>"
+)
+
+IMAGE_PATH_RE = re.compile(r"IMAGE_PATH:\s*(\S+)", re.IGNORECASE)
+PATH_RE = re.compile(r"[\w./\\():+()-]+\.(?:png|jpe?g|webp|gif)", re.IGNORECASE)
+
+
+def _extract_image_path(text: str) -> Optional[Path]:
+    from pathlib import Path
+    m = IMAGE_PATH_RE.search(text)
+    if m:
+        return Path(m.group(1)).resolve()
+    for pm in PATH_RE.finditer(text):
+        cand = Path(pm.group(0).strip(" '\""))
+        p = cand.resolve() if cand.is_absolute() else (Path.cwd() / cand).resolve()
+        if p.is_file():
+            return p
+    return None
+
+
+async def swap_hair_agy(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]:
+    """Perform hair swap using Google Antigravity CLI (agy) in headless mode."""
+    import tempfile
+    import json
+    from pathlib import Path
+
+    prompt_desc = HAIRCUT_PROMPTS.get(haircut_id, f"{haircut_id} hairstyle")
+
+    # Write selfie to temp file
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+        tmp.write(selfie_bytes)
+        tmp_path = Path(tmp.name).resolve()
+
+    prompt = (
+        f"Edit the image at {tmp_path} according to:\n"
+        f"Transform this person's hairstyle to: {prompt_desc}. "
+        f"Keep the face, facial features, skin tone, expression, clothing, "
+        f"body, posture, and background exactly the same. Only change the hair.\n\n"
+        f"Save the result as a new PNG file.{IMAGE_MODE_PROMPT}"
+    )
+
+    cmd = [
+        "agy",
+        "--model", AGY_MODEL,
+        "--effort", AGY_EFFORT,
+        "-p", prompt,
+        "--dangerously-skip-permissions",
+        "--output-format", "json",
+        "--print-timeout", "600s",
+    ]
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=630)
+        stdout_text = stdout.decode("utf-8", errors="replace")
+
+        envelope = None
+        for line in stdout_text.splitlines():
+            try:
+                envelope = json.loads(line)
+                break
+            except json.JSONDecodeError:
+                continue
+
+        if envelope and envelope.get("status") == "SUCCESS":
+            text = envelope.get("response", "")
+            img_path = _extract_image_path(text)
+            if img_path and img_path.is_file():
+                result_bytes = img_path.read_bytes()
+                logger.info("agy hair swap succeeded (%d bytes)", len(result_bytes))
+                return result_bytes
+        logger.warning("agy hair swap failed or returned invalid response")
+    except Exception as exc:
+        logger.warning("agy hair swap error: %s", exc)
+    finally:
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except Exception:
+                pass
+
+    return None
+
+
 async def run_hair_swap(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]:
-    logger.info("Trying Cloudflare Workers AI inpainting (free tier)")
+    logger.info("Trying Google Antigravity CLI (agy)")
+    result = await swap_hair_agy(selfie_bytes, haircut_id)
+    if result:
+        return result
+
+    logger.info("agy failed, trying Cloudflare Workers AI inpainting (free tier)")
     result = await swap_hair_cloudflare(selfie_bytes, haircut_id)
     if result:
         return result
@@ -497,3 +592,4 @@ async def run_hair_swap(selfie_bytes: bytes, haircut_id: str) -> Optional[bytes]
 
     logger.warning("All face-preserving inpainting providers failed; falling back to reference image")
     return None
+

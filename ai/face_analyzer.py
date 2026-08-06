@@ -51,7 +51,8 @@ def _detect_face_shape_geometric(image_bytes: bytes) -> str:
     return "oval"
 
 
-def analyze_face_shape(image_bytes: bytes) -> Optional[str]:
+def _analyze_face_shape_sync(image_bytes: bytes) -> Optional[str]:
+    """Synchronous face shape analysis — runs Gemini API + geometric fallback."""
     valid_shapes = {"oval", "round", "square", "heart", "oblong", "diamond"}
 
     if GEMINI_API_KEY:
@@ -87,4 +88,10 @@ def analyze_face_shape(image_bytes: bytes) -> Optional[str]:
     geom_shape = _detect_face_shape_geometric(image_bytes)
     logger.info("Face shape detected via geometric fallback: %s", geom_shape)
     return geom_shape
+
+
+async def analyze_face_shape(image_bytes: bytes) -> Optional[str]:
+    """Async wrapper — runs blocking Gemini/CV analysis in a thread."""
+    import asyncio
+    return await asyncio.to_thread(_analyze_face_shape_sync, image_bytes)
 

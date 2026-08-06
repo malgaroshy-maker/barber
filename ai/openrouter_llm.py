@@ -1,3 +1,4 @@
+import functools
 import logging
 from typing import Optional
 import httpx
@@ -8,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
+@functools.lru_cache(maxsize=1)
 def build_system_prompt() -> str:
     """Build the system prompt dynamically with all 30 haircuts from haircuts.json."""
     from conversation.state_machine import get_haircuts

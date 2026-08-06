@@ -23,6 +23,10 @@ FREETHEAI_API_KEY = os.getenv("FREETHEAI_API_KEY")
 CLOUDFLARE_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID")
 CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN")
 
+# Google Antigravity CLI (agy) settings
+AGY_MODEL = os.getenv("AGY_MODEL", "gemini-3.6-flash")
+AGY_EFFORT = os.getenv("AGY_EFFORT", "low")
+
 BARBER_PHONE_NUMBER = os.getenv("BARBER_PHONE_NUMBER")
 NGROK_URL = os.getenv("NGROK_URL", "")
 

@@ -22,6 +22,7 @@ class UserSession:
     selfie_media_id: Optional[str] = None
     result_image_url: Optional[str] = None
     created_at: datetime = field(default_factory=datetime.now)
+    last_active: datetime = field(default_factory=datetime.now)
     attempts: int = 0
     menu_page: int = 0
     chat_history: list[dict] = field(default_factory=list)

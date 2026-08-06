@@ -1,3 +1,4 @@
+import functools
 import json
 from pathlib import Path
 from typing import Optional
@@ -7,14 +8,24 @@ from app.models import ConversationState
 DATA_DIR = Path(__file__).parent.parent / "data"
 
 
-def get_haircuts() -> list[dict]:
+@functools.lru_cache(maxsize=1)
+def get_haircuts() -> tuple[dict, ...]:
+    """Load haircuts catalogue from JSON (cached after first read)."""
     with open(DATA_DIR / "haircuts.json", encoding="utf-8") as f:
-        return json.load(f)
+        return tuple(json.load(f))
 
 
+@functools.lru_cache(maxsize=1)
 def get_face_shape_map() -> dict:
+    """Load face shape map from JSON (cached after first read)."""
     with open(DATA_DIR / "face_shape_map.json", encoding="utf-8") as f:
         return json.load(f)
+
+
+def reload_catalogue() -> None:
+    """Clear cached catalogue data — call after editing JSON files."""
+    get_haircuts.cache_clear()
+    get_face_shape_map.cache_clear()
 
 
 def get_haircut_by_id(haircut_id: str) -> Optional[dict]:

@@ -1,18 +1,17 @@
 import logging
+from datetime import datetime, timedelta
 
 from app.config import MAX_SELFIE_RETRIES
 from app.models import ConversationState, UserSession
 from conversation import scripts as s
-from conversation.state_machine import get_haircut_by_id, get_haircuts, get_recommendations, next_state
-from whatsapp import client as wa
-from whatsapp.interactive import build_decision_buttons, build_haircut_menu_section, build_retry_button
-
 from conversation.catalogue_matcher import (
     CATEGORIES,
     detect_try_on_intent,
     match_category,
     match_haircut,
 )
+from conversation.state_machine import get_haircut_by_id, get_haircuts, get_recommendations
+from whatsapp import client as wa
 from whatsapp.interactive import (
     build_category_menu_section,
     build_decision_buttons,
@@ -22,10 +21,20 @@ from whatsapp.interactive import (
 
 logger = logging.getLogger(__name__)
 
+SESSION_EXPIRY = timedelta(hours=1)
+
 sessions: dict[str, UserSession] = {}
 
 
 def get_session(phone: str) -> UserSession:
+    """Get or create a session, auto-expiring stale ones."""
+    if phone in sessions:
+        session = sessions[phone]
+        if datetime.now() - session.last_active > SESSION_EXPIRY:
+            logger.info("Session expired for %s (idle %s), resetting", phone, datetime.now() - session.last_active)
+            sessions[phone] = UserSession(phone=phone)
+        else:
+            session.last_active = datetime.now()
     if phone not in sessions:
         sessions[phone] = UserSession(phone=phone)
     return sessions[phone]
@@ -66,6 +75,11 @@ async def send_category_cuts(phone: str, category_id: str, session: UserSession)
 async def handle_message(phone: str, msg_type: str, payload: dict) -> None:
     session = get_session(phone)
     logger.info("Handling %s from %s in state %s", msg_type, phone, session.state.value)
+
+    # Guard: if we're still processing a previous request, acknowledge and wait
+    if session.state == ConversationState.PROCESSING and msg_type != "image":
+        await wa.send_text(phone, s.STILL_PROCESSING)
+        return
 
     if msg_type == "text":
         text = payload.get("text", {}).get("body", "").strip()
@@ -287,7 +301,7 @@ async def handle_image(phone: str, payload: dict, session: UserSession) -> None:
     haircut_id = session.selected_haircut
     if not haircut_id:
         from ai.face_analyzer import analyze_face_shape
-        shape = analyze_face_shape(image_bytes)
+        shape = await analyze_face_shape(image_bytes)
         if shape:
             session.face_shape = shape
             from conversation.state_machine import get_face_shape_map
@@ -330,26 +344,44 @@ async def handle_image(phone: str, payload: dict, session: UserSession) -> None:
 
 
 async def show_menu(phone: str, session: UserSession | None = None) -> None:
-    """Show the paginated haircut menu — image carousel or text fallback.
+    """Show the category menu first, then paginated haircuts within a category.
 
-    When reference images are available the menu is rendered as a WhatsApp
-    image carousel (3 images per page with numbered captions).  Otherwise
-    it falls back to a plain-text numbered list.
+    On first visit (no active category), shows 5 categories + AI option.
+    Once a category is selected, shows the haircuts within it.
     """
-    haircuts = get_haircuts()
+    # If user already picked a category, show haircuts within it
+    if session and session.active_category:
+        haircuts = [
+            h for h in get_haircuts()
+            if h.get("category") == session.active_category and h.get("active", True)
+        ]
+        if not haircuts:
+            haircuts = list(get_haircuts())[:3]
 
-    sections = build_haircut_menu_section(haircuts, ai_option=True)
-    page = session.menu_page if session else 0
-    total_pages = len(haircuts) // 3 + (1 if len(haircuts) % 3 else 0)
+        sections = build_haircut_menu_section(haircuts, ai_option=True)
+        page = session.menu_page if session else 0
+        total_pages = len(haircuts) // 3 + (1 if len(haircuts) % 3 else 0)
+        await wa.send_interactive_list(
+            to=phone,
+            header="✂️ صالون الحلاقة",
+            body=(
+                f"اختار قصة (صفحة {page + 1} من {total_pages}):"
+                if page > 0
+                else "اختار القصة اللي تعجبك من المنيو:"
+            ),
+            button_text="عرض القصات",
+            sections=sections,
+            page=page,
+        )
+        return
+
+    # First visit: show categories
+    sections = build_category_menu_section()
     await wa.send_interactive_list(
         to=phone,
         header="✂️ صالون الحلاقة",
-        body=(
-            f"اختار قصة (صفحة {page + 1} من {total_pages}):"
-            if page > 0
-            else "اختار القصة اللي تعجبك من المنيو:"
-        ),
-        button_text="عرض القصات",
+        body="اختار القسم اللي يعجبك، أو اكتب 'ai' والذكاء الاصطناعي يختارلك:",
+        button_text="عرض الأقسام",
         sections=sections,
-        page=page,
+        page=0,
     )

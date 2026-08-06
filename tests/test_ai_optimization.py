@@ -9,7 +9,7 @@ from conversation.catalogue_matcher import (
     normalize_arabic_text,
 )
 from ai.openrouter_llm import build_system_prompt, generate_llm_response
-from ai.face_analyzer import analyze_face_shape, _detect_face_shape_geometric
+from ai.face_analyzer import analyze_face_shape, _analyze_face_shape_sync, _detect_face_shape_geometric
 from ai.face_validator import validate_selfie
 from ai.hair_mask import create_hair_mask
 
@@ -79,7 +79,7 @@ def test_face_shape_geometric_fallback():
 def test_analyze_face_shape_integration():
     if TEST_FACE.exists():
         img_bytes = TEST_FACE.read_bytes()
-        shape = analyze_face_shape(img_bytes)
+        shape = _analyze_face_shape_sync(img_bytes)
         assert shape in {"oval", "round", "square", "heart", "oblong", "diamond"}
 
 
